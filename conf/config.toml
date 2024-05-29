@@ -1,0 +1,10 @@
+[auth]
+auth_url = "https://logincert.anaf.ro/anaf-oauth2/v1/authorize"
+token_url = "https://logincert.anaf.ro/anaf-oauth2/v1/token"
+client_id = "$CLIENT_ID"
+client_secret = "$CLIENT_SECRET"
+redirect_uri = "https://libanaf.dentrix.ro/libanaf"
+
+[connection]
+access_token="$ACCESS_TOKEN"
+refresh_token="$REFRESH_TOKEN"

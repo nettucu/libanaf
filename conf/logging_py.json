@@ -1,0 +1,42 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+       "console": {
+          "format": "%(module)s.%(funcName)s().%(lineno)d - %(message)s",
+          "datefmt": "%Y-%m-%d %H:%M:%S.%f",
+          "style": "%",
+          "validate": true,
+          "class": "logging.Formatter"
+       },
+       "file": {
+          "format": "%(asctime)s.%(msecs)d %(levelname)s %(module)s.%(funcName)s().%(lineno)d - %(message)s",
+          "datefmt": "%Y-%m-%d %H:%M:%S",
+          "style": "%",
+          "validate": true,
+          "class": "logging.Formatter"
+       }
+    },
+    "handlers": {
+       "console": {
+          "class": "rich.logging.RichHandler",
+          "rich_tracebacks": "True",
+          "formatter": "console"
+       },
+       "file": {
+          "class": "logging.handlers.RotatingFileHandler",
+          "formatter": "file",
+          "mode": "a",
+          "filename": "logs/libanaf.log",
+          "maxBytes": 1048576,
+          "backupCount": 3
+       }
+    },
+    "loggers": {
+       "root": {
+          "level": "DEBUG",
+          "handlers": [ "console", "file" ],
+          "propagate": true
+       }
+    }
+ }

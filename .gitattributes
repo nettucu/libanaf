@@ -1,0 +1,2 @@
+thirdparty/GenerareFacturaAll.zip filter=lfs diff=lfs merge=lfs -text
+thirdparty/GenerareFactura_02022024.zip filter=lfs diff=lfs merge=lfs -text
