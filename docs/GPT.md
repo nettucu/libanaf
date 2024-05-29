@@ -29,23 +29,23 @@ function parameters or through environment variables
 - the application should have as common parameter the verbosity level and logging needs to be setup based on that
 
 - first application command is "auth" and it needs to authenticate to ANAF portal and retrieve the
-authentication token and refresh token, probably rauth library could be used, however here is the quirk:
-  a) the auth_url must be open in a browser window with the corect request reason being that the authentication is done externally with a digital certificate (it is similar to how clasp authorizez for google cloud)
+authentication token and refresh token, probably requests_oauthlib library could be used, however here is the quirk:
+  a) the application has registered a callback URL [https://localhost:8000/callback] which will be the endpoint where a web server needs to listen to to get the authorization_code to get the 
 
 
 Let's generate the application; first the proposed directory structure then the code
 
 ================
 
-Next step is to implement the necessary steps to get the list of available invoices from the API, 3. a) in the document prezentare api efactura.pdf
+Next step is to implement the necessary steps to get the list of available invoices from the API, 3. a) in the document "prezentare api efactura.pdf"
 
-a) It should use the api supplied by *api.anaf.ro/prod/*
-b) It should be a typer command in the application called list-invoices
-c) The command should take three parameters: 
+* It should use the api supplied by *api.anaf.ro/prod/*
+* It should be a typer command in the application called list-invoices
+* The command should take three parameters: 
     - the number of days (zile={val1}); default value 60
     - cif (cif={val2}) which should be a number, default value 19507820
     - filter (filtru={val3}) which should be an enum with values E, T, P, R ; default value P
-d) the help of the command must include the details about the expected parameters:
+* the help of the command must include the details about the expected parameters:
     val1 = numărul de zile pentru care se face interogarea, format numeric, valorile acceptate de la 1 la 60
     val2 = cif-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile
     val3 = parametru folosit pentru filtrarea mesajelor. Nu este obligatoriu. Valorile acceptate sunt:
