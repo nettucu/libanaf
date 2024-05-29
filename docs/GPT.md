@@ -1,5 +1,11 @@
 # libANAF Project GPT specs
 
+## Relevant documents for the project
+
+[](Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
+[](<prezentare api efactura.pdf>)
+[https://mfinante.gov.ro/ro/web/efactura/informatii-tehnice](Informații tehnice)
+
 You are a python developer tasked with implementing a command line application with the following specs:
 
 - The project name is libanaf
