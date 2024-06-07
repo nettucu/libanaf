@@ -2,7 +2,7 @@ import logging
 
 import typer
 
-from .auth import OAuthClient, authenticate
+from .auth import OAuthClient
 from .config import Configuration, setup_logging
 from .list_invoices import list_invoices
 from .types import Filter
