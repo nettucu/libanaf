@@ -22,9 +22,9 @@ class Configuration(object):
     def __init__(self) -> None:
         self.config = None
 
-    def load_config(self) -> Dict[str, Any]:
+    def load_config(self, env: str = "localhost") -> Dict[str, Any]:
         if self.config is None:
-            load_dotenv(SECRETS_PATH)
+            load_dotenv(SECRETS_PATH + "." + env)
             with open(CONFIG_PATH, 'r') as f:
                 #self.config = tomllib.load(f)
                 self.config = envtoml.load(f)
