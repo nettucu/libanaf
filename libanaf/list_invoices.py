@@ -56,7 +56,7 @@ def list_invoices(zile: int, cif: int, filtru: Optional[Filter] = Filter.P) -> N
     table.add_column("Id", justify="center")
 
     for mesaj in response_data.get("mesaje", []):
-        data_creare = datetime.fromtimestamp(int(mesaj["data_creare"]) / 1000).strftime('%Y-%m-%d %H:%M:%S') # mesaj["data_creare"]
+        data_creare = datetime.strptime(mesaj["data_creare"], "%Y%m%d%H%M").strftime('%Y-%m-%d %H:%M:%S') # mesaj["data_creare"]
         id_solicitare = mesaj["id_solicitare"]
         detalii = mesaj["detalii"]
         tip = mesaj["tip"]

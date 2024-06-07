@@ -1,6 +1,7 @@
 import json
 import logging
 import logging.config
+from ast import Import
 from typing import Any, Dict
 
 import envtoml
@@ -42,3 +43,15 @@ def setup_logging(verbose: bool) -> None:
         logging_config["handlers"]["console"]["level"] = "DEBUG"
 
     logging.config.dictConfig(logging_config)
+    if verbose:
+        _setup_requests_logging()
+
+def _setup_requests_logging() -> None:
+    try:
+        import http.client as http_client
+    except ImportError:
+        import httplib as http_client
+    
+    http_client.HTTPConnection.debuglevel = 1
+    log = logging.getLogger("urllib3")
+    log.setLevel(logging.DEBUG)

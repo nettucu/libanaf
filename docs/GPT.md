@@ -1,42 +1,63 @@
 # libANAF Project GPT specs
 
+This document describes the requirements for a python library and application which deals with ANAF e-factura
+
 ## Relevant documents for the project
 
-[](Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
-[](<prezentare api efactura.pdf>)
-[https://mfinante.gov.ro/ro/web/efactura/informatii-tehnice](Informații tehnice)
+[Procedura de inregistrare a aplicaties in ANAF OAUTH](Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)(https://static.anaf.ro/static/10/Anaf/Informatii_R/API/Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
+[Efactura API](<prezentare api efactura.pdf>)(https://mfinante.gov.ro/static/10/eFactura/prezentare%20api%20efactura.pdf)
+[Informații tehnice](https://mfinante.gov.ro/ro/web/efactura/informatii-tehnice)
 
-You are a python developer tasked with implementing a command line application with the following specs:
+## Other similar projects
+- [E-factura by letconex](https://github.com/letconex/E-factura) - Javscript not really working
+- [RO E-FACTURA ANAF](https://github.com/Rebootcodesoft/efactura_anaf) - PHP, seems to be quite good
+- 
 
-- The project name is libanaf
-- For the management of the project you have to use poetry, to generate dependencies and
-manage other libraries, python version 3.11 and later
-- The project will be managed via git for source code
-- For the commands interface you must use typer library
-- All path related actions should be done using the pathlib library
-- All python arguments and type must be fully annotated, including the parameters passed to typer
-- All functions must have comments
-- The project uses secrets as per above document, as such you must manage the security of such secrets.
-They should be stored securely under the main project directory in secrets/ subfolder
-- The directory structure should contain a bin/ directory which will call the rest of the application
-  the main app binary in this directory should be minimal, it should not be the main typer application object
-- For the configuration of the application you must use configuration files stored in a conf/ directory
-for the configuration files of the application you must use TOML files/libraries specifically envtoml
-so that environment variables are also parsed
+## General project requirements
+
+- Project name is libanaf
+- Python project management is done with poetry to manage required libraries
+- Python version supported is version 3.11 and later
+- Git will be used to manage the source code
+- Path management needs to be done using the pathlib library
+- The code must be modern python code, where all function arguments are annotated
+- For the command line application typer library will be used
+- All functions must be commented
+- All function arguments must be english words
+- The command line application is to be seperated from the main libanaf library
+- The library which does the communication with ANAF servers should not have dependencies with the main application; the main application will use the library to make calls and receive the results for further processing
+- The application code will be instrumented with debugging and informational messages using the logging framework
+- To configure the logging framework a json file needs to be used conf/logging_py.json
+- For output the rich library will be used, however it will not be used to directly output logging messages, instead logging library will be used, unless special console output is required
+- Application configuration you must use configuration files stored in a conf/ directory beneath the main application folder
+- The configuration files will use TOML format, however you have to use envtoml to read the files so that enviroment variables will be interpolated
 - The configuration should be done using a singleton class to make sure it is only read / created once
 per application
-- The application will use rich library for it's console output, however the logger library will be used
-to make the output and pass extra parameters such as extra={"markup": True} to the log function
-- The application must create logs under logs/ directory and the configuration of the logging framework must be done with json file stored in conf/logging_py.json as well as console logging via RichHandler, however the logging should be done with the logging framework and the Rich logging is to be done by the configuration
 - libanaf must be a separate module from the main application and it should have no dependencies on the
 application configuration, it must expose an API which could be used by other applications, either through
 function parameters or through environment variables
-
 - the application should have as common parameter the verbosity level and logging needs to be setup based on that
+- The project uses secrets as per above document (ANAF OAUTH), the security of secrets is important. They should be stored securely under the main project directory in secrets/ subfolder and an .env file read with dotenv library
+- The directory structure should contain a bin/ directory which will call the rest of the application
+  the main app binary in this directory should be minimal, it should not be the main typer application object
+- The configuration should be done using a singleton class to make sure it is only read / created once
+per application
+- The application must also create logs under logs/ directory and the configuration of the logging framework must be done with json file stored in conf/logging_py.json as well as console logging via RichHandler, however the logging should be done with the logging framework and the Rich logging is to be done by the configuration
+- libanaf must be a separate module from the main application and it should have no dependencies on the
+application configuration, it must expose an API which could be used by other applications, either through
+function parameters or through environment variables
+- the application should have as common parameter the verbosity level and logging needs to be setup based on that
+- The application/library should raise errors when network communication is not possible or errors are returned from the ANAF API
+- The project should use extensive testing
+- httpx library will be used to make web requests
+- authlib will be used for OAUTH specific
 
-- first application command is "auth" and it needs to authenticate to ANAF portal and retrieve the
-authentication token and refresh token, probably requests_oauthlib library could be used, however here is the quirk:
-  a) the application has registered a callback URL [https://localhost:8000/callback] which will be the endpoint where a web server needs to listen to to get the authorization_code to get the 
+## 1st Feature - Authorization
+
+- This feature should be part of the main ANAF library
+- It requires the use of a web server listening for the callback url on port 8000 on the registered callback URL [https://localhost:8000/callback](https://localhost:8000/callback)
+- The request for the ANAF authentication API follows the specification in the document "Procedura de inregistrare a aplicaties in ANAF OAUTH"
+- The http server should listen to a https endpoint (using self signed certificate), use of ssl should be configurable
 
 
 Let's generate the application; first the proposed directory structure then the code
@@ -63,7 +84,7 @@ e) The request must use the authentication token in the Authorization header:
     Authorization: Bearer <TOKEN>
     where <TOKEN> is from the configuration section connection and is named access_token
 f) The response is a json list in the following format:
-  {
+  `{
     "mesaje": [
         {
             "data_creare": "202403290821",
@@ -78,9 +99,10 @@ f) The response is a json list in the following format:
     "serial": "2210701e50c923c412717453",
     "cui": "19507820,2760526082419",
     "titlu": "Lista Mesaje disponibile din ultimele 60 zile"
-  }
+  }`
+
   - data_creare is of type date but it is in milliseconds since unix epoch time
-  - from detalii I need you to extract the value of id_incarcare and cif_emitent
+  - from detalii the values of id_incarcare and cif_emitent must be taken out
   - if there is a field called "eroare" instead of "mesaje" then that means an error occured and that is the error message
 
 g) Parameters must always be in english language
