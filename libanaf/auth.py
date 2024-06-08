@@ -3,6 +3,7 @@ import threading
 from pathlib import Path
 from queue import Queue
 
+import typer
 from authlib.integrations.httpx_client import OAuth2Client
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
@@ -17,6 +18,8 @@ class AuthServer:
         @Request.application
         def code_request(request: Request):
             logger.debug(request)
+            logger.debug(f"request.headers = {request.headers}")
+            logger.debug(f"request.args = {request.args}")
             q.put(request.args["code"])
             return Response("Authorization code received", 204)
 
@@ -59,11 +62,12 @@ class OAuthClient:
 
     def get_authorization_code(self) -> str:
         authorization_url, state = self.oauth.create_authorization_url(self.auth_url, token_content_type="jwt")
-        logger.info(f"Authorization URL: {authorization_url}")
-        print(f"Please go to the following URL to authorize the application:\n{authorization_url}")
+        self.oauth_state = self.oauth.state
+        logger.debug(f"Authorization URL: {authorization_url}")
+
+        typer.echo(f"Please go to the following URL to authorize the application:\n{authorization_url}")
 
         auth_code = self.start_local_server()
-
         return auth_code
 
     def get_access_token(self):
