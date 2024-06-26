@@ -10,7 +10,8 @@
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
-      "args": "${command:pickArgs}"
+      "args": "${command:pickArgs}",
+      "justMyCode": false
     },
     {
         "name": "Debug auth",
@@ -26,7 +27,24 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/main.py",
       "console": "integratedTerminal",
-      "args": ["invoice-list", "--filtru", "P", "60", "19507820"]
-  }
+      "args": ["invoices", "list", "60", "19507820", "--filter", "P"]
+    },
+    {
+      "name": "Debug invoice-download",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/main.py",
+      "console": "integratedTerminal",
+      "args": ["invoices", "download", "59", "19507820", "--filter", "P"]
+    },
+    {
+      "name": "Debug invoice-process",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/main.py",
+      "console": "integratedTerminal",
+      "args": ["invoices", "process"],
+      "justMyCode": false
+    }
 ]
 }

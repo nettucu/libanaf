@@ -81,6 +81,7 @@ Next step is to implement the necessary steps to get the list of available invoi
     P = FACTURA PRIMITA
     R = MESAJ CUMPARATOR PRIMIT / MESAJ CUMPARATOR TRANSMIS
 e) The request must use the authentication token in the Authorization header:
+    It should use the method get_client from LibANAF_AuthClient to return the httpx client
     Authorization: Bearer <TOKEN>
     where <TOKEN> is from the configuration section connection and is named access_token
 f) The response is a json list in the following format:
@@ -110,4 +111,24 @@ g) Parameters must always be in english language
 h) For start I want you to print a table from the received json with the following columns using rich library:
    Data_creare Id_solicitare id_incarcare  cif_emitent  tip id
 
+i) Getting the response from the server must be separated from the display of the list of invoices
+
 Please write the code for the above
+
+=================
+
+Next steps are:
+1. Download the missing invoices and store the files locally in a directory read from the configuration file
+2. For each file, which is a zip file:
+   1. unpack from the zip file the invoice XML file
+   2. use a different service to convert the XML to PDF which is to be stored in the same location
+
+1. Download the missing invoices and store the files locally in a directory read from the configuration file
+  a) The request to download files is https://api.anaf.ro/prod/ FCTEL/rest/descarcare?id={val1}
+    where id is the same id from the previous point
+  b) The received IDs should be checked against files downloded to the target directory and only invoices
+  not already downloaded should be downloaded
+  c) I want you to use Async https clients to download the files (maximum 5 at the same time)
+  and I want a progress to display the following information:
+    how many invoices i have downloaded from all the invoices i should download, e.g. 2/20 Invoices which needs to be updated as the download progresses
+    For each download, using rich display a progress bar of the download (id_invoices .... progress bar)

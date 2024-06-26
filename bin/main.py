@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 ## need to setup paths before import or should we setup the python path accordingly ?
-from libanaf.app import app  # noqa: E402
+from libanaf.cli import app  # noqa: E402
 
 # APP_HOME = Path(__file__).parent.parent.resolve().absolute()
 # sys.path.append(str(APP_HOME / "libanaf"))

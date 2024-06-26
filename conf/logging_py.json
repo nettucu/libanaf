@@ -37,6 +37,16 @@
           "level": "DEBUG",
           "handlers": [ "console", "file" ],
           "propagate": true
+       },
+       "httpx": {
+         "level": "DEBUG",
+         "handlers": ["console", "file"],
+         "propagate": true
+       },
+       "httpcore": {
+         "level": "DEBUG",
+         "handlers": ["console", "file"],
+         "propagate": true
        }
     }
  }

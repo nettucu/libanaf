@@ -1,7 +1,7 @@
 import json
 import logging
 import logging.config
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import envtoml
 from dotenv import load_dotenv
@@ -36,7 +36,7 @@ class Configuration(object):
             json.dump(tokens, f)
 
 
-def setup_logging(verbose: bool) -> None:
+def setup_logging(verbose: Optional[bool] = True) -> None:
     with open(LOGGING_CONFIG_PATH, "r") as f:
         logging_config: Dict[str, Any] = json.load(f)
 
@@ -56,4 +56,8 @@ def _setup_requests_logging() -> None:
 
     http_client.HTTPConnection.debuglevel = 1
     log = logging.getLogger("urllib3")
+    log.setLevel(logging.DEBUG)
+    log = logging.getLogger("httpx")
+    log.setLevel(logging.DEBUG)
+    log = logging.getLogger("httpcore")
     log.setLevel(logging.DEBUG)
