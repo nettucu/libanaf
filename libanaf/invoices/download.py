@@ -6,7 +6,13 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 from httpx import AsyncClient, HTTPStatusError, Response
 from rich.console import Console
-from rich.progress import BarColumn, Progress, TextColumn
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+)
 
 from libanaf.types import Filter
 
@@ -63,7 +69,7 @@ async def download_invoice(client: AsyncClient, invoice_id: str, download_dir: P
         file_path: Path = download_dir / f"{invoice_id}.zip"
         with open(file_path, "wb") as file:
             file.write(response.content)
-            progress.update(task_id, advance=1) # len(response.content))
+            progress.update(task_id, advance=1, refresh=True) # len(response.content))
 
         return file_path
 
@@ -75,13 +81,16 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
 
     async with auth_client.get_client() as client:
         with Progress(
+            SpinnerColumn(),
+            MofNCompleteColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
-            transient=True
+            transient=False
         ) as progress:
             # tasks = []
             overall_progress = progress.add_task("Overall progress", total = len(invoices_to_download))
+            progress.start_task(overall_progress)
 
             tasks = [
                 download_invoice(client, invoice_id, download_dir, progress, task_id=overall_progress, semaphore=semaphore)
@@ -92,7 +101,7 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
             #     task = download_invoice(client, invoice_id, download_dir, progress, task_id=None, semaphore=semaphore)
             #     tasks.append(task)
 
-            results: list[Path] = await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks)
             logger.debug(f"Downloaded files: {results}")
             # for _ in results:
             #     progress.update(overall_progress, advance=1)
@@ -132,6 +141,12 @@ def download(days: Optional[int] = 60, cif: Optional[int] = 19507820, filter: Op
 
         loop.run_until_complete(download_all_invoices(invoices_to_download, download_dir))
         console.print("[bold green]Downloaded all missing invoices.[/bold green]")
+
+    except HTTPStatusError as e:
+        console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")
+    except Exception as e:
+        logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
+        console.print(f"[bold red]An error occurred:[/bold red] {e}")
 
     except HTTPStatusError as e:
         console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")

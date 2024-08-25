@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 import jwt
 import typer
+from authlib.oauth2.rfc6749 import OAuth2Token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
@@ -15,17 +16,22 @@ logger = logging.getLogger()
 
 
 class LibANAF_AuthServer:
-    def __init__(self, host: str = "localhost",
-                 port: int = 8000,
-                 use_ssl: bool = True,
-                 cert_file: Optional[str] = None,
-                 key_file: Optional[str] = None):
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 8000,
+        use_ssl: bool = True,
+        cert_file: Optional[str] = None,
+        key_file: Optional[str] = None,
+    ):
         self.host = host
         self.port = port
         self.use_ssl = use_ssl
 
         if self.use_ssl and (cert_file is None or key_file is None):
-            raise RuntimeError("When SSL is enabled, certificate file and key file are mandatory")
+            raise RuntimeError(
+                "When SSL is enabled, certificate file and key file are mandatory"
+            )
 
         self.cert_file = cert_file
         self.key_file = key_file
@@ -45,14 +51,24 @@ class LibANAF_AuthServer:
             # we have received an error instead of an authorization code to get the token with
             if "error" in request.args:
                 logger.error(f"Error received: {request.args['error']}")
-                return Response(f"Error occured: {request.args['error']}", mimetype="text/plain")
+                return Response(
+                    f"Error occured: {request.args['error']}", mimetype="text/plain"
+                )
             elif "code" in request.args:
                 logger.debug(f"Auth code: {request.args['code']}")
-                return Response(f"Authorization code received: {request.args['code']}", mimetype="text/plain")
+                return Response(
+                    f"Authorization code received: {request.args['code']}",
+                    mimetype="text/plain",
+                )
 
         logger.debug("Starting server on localhost:8000")
         if self.use_ssl:
-            self.server = make_server(self.host, self.port, code_request, ssl_context=(self.cert_file, self.key_file))
+            self.server = make_server(
+                self.host,
+                self.port,
+                code_request,
+                ssl_context=(self.cert_file, self.key_file),
+            )
         else:
             self.server = make_server(self.host, self.port, code_request)
 
@@ -70,7 +86,17 @@ class LibANAF_AuthServer:
 
 
 class LibANAF_AuthClient:
-    def __init__(self, client_id: str, client_secret: str, auth_url: str, token_url: str, redirect_uri: str, use_ssl: bool = True, access_token: str | Any = None, refresh_token: str | Any = None) -> None:
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        auth_url: str,
+        token_url: str,
+        redirect_uri: str,
+        use_ssl: bool = True,
+        access_token: str | Any = None,
+        refresh_token: str | Any = None,
+    ) -> None:
         self.client_id: str = client_id
         self.client_secret: str = client_secret
         self.auth_url: str = auth_url
@@ -82,17 +108,33 @@ class LibANAF_AuthClient:
 
         self._make_client()
 
+    # Write a function to update the access token and refresh token when called from AsyncOAuth2Client
+    # The function will be called when the token expired and it should be based on authlib Auto Update Token feature
+    def update_token(
+        self, token: None, refresh_token: None, access_token: None
+    ) -> None:
+        # TODO: do the update of the access token and refresh token
+        self.access_token = token["access_token"]
+        self.refresh_token = token["refresh_token"]
+
     def _make_client(self) -> None:
-        self.oauth: AsyncOAuth2Client = AsyncOAuth2Client(client_id=self.client_id, client_secret=self.client_secret, redirect_uri=self.redirect_uri, scope="", token_endpoint = self.token_url)
+        self.oauth: AsyncOAuth2Client = AsyncOAuth2Client(
+            client_id=self.client_id,
+            client_secret=self.client_secret,
+            redirect_uri=self.redirect_uri,
+            scope="",
+            token_endpoint=self.token_url,
+            update_token=self.update_token,
+        )
         if self.access_token is not None:
             # If an access token was passed (as string, we need to pass it to the authlib.AsyncOAuth2Client
             decoded = jwt.decode(self.access_token, options={"verify_signature": False})
             self.oauth.token = {
-                'access_token': self.access_token,
-                'token_type': decoded['token_type'],
-                'expires_at': decoded['exp'],
-                'refresh_token': self.refresh_token
-                }
+                "access_token": self.access_token,
+                "token_type": decoded["token_type"],
+                "expires_at": decoded["exp"],
+                "refresh_token": self.refresh_token,
+            }
 
     def start_local_server(self):
         # TODO: the certificate and keyfile should not be hardcoded here
@@ -100,13 +142,17 @@ class LibANAF_AuthClient:
         cert_file = basedir / "secrets" / "cert.pem"
         key_file = basedir / "secrets" / "key.pem"
 
-        auth_server = LibANAF_AuthServer(use_ssl=self.use_ssl, cert_file=cert_file, key_file=key_file)
+        auth_server = LibANAF_AuthServer(
+            use_ssl=self.use_ssl, cert_file=cert_file, key_file=key_file
+        )
 
         # the return type is a MultiDict from werkzeug
         return auth_server.get_auth_response()
 
     def get_authorization_code(self):
-        authorization_url, state = self.oauth.create_authorization_url(self.auth_url, token_content_type="jwt")
+        authorization_url, state = self.oauth.create_authorization_url(
+            self.auth_url, token_content_type="jwt"
+        )
         self.oauth_state = state
         logger.debug(f"Authorization URL: {authorization_url}")
 
@@ -138,7 +184,12 @@ class LibANAF_AuthClient:
         auth_code = auth_response["code"]
 
         logger.debug(f"Authorization code: {auth_code}")
-        token = self.oauth.fetch_token(self.token_url, code=auth_code, client_secret=self.client_secret, token_content_type="jwt")
+        token = self.oauth.fetch_token(
+            self.token_url,
+            code=auth_code,
+            client_secret=self.client_secret,
+            token_content_type="jwt",
+        )
         logger.debug(f"Access token received: {token}")
 
         return token

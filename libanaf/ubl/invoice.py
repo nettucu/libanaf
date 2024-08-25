@@ -57,15 +57,51 @@ class Invoice(BaseXmlModel, tag='Invoice', search_mode='unordered', ns='', nsmap
     legal_monetary_total: LegalMonetaryTotal
     invoice_line: List[InvoiceLine]
 
-    def tofname(self):
+    def _sanitize_file_name(self, *dirty, glue: str = '_', replace_char: str = '-') -> str:
+        import re
+
+        parts: list[str] = list()
+        for part in dirty:
+            part = part.strip().replace('.', '')
+            # part = re.sub(r"[[:space]]", replace_char, part)
+            part = re.sub(r"[/\\?`&%*:|\"<>\x7F\x00-\x1F,.\s]", replace_char, part)
+            pattern = replace_char + "+"
+            part = re.sub(pattern, replace_char, part)
+
+            parts.append(part)
+
+        # dirty = dirty.strip().replace('.', '')
+        # clean: str = re.sub(r"[/\\?%*:|\"<>\x7F\x00-\x1F.]\*", "-", dirty.strip())
+
+        return glue.join(parts)
+
+    def tofname(self) -> str:
         supplier_party: Party = self.accounting_supplier_party.party
         if supplier_party.party_name is not None and supplier_party.party_name.name is not None:
-            supplier_name= supplier_party.party_name.name
+            supplier_name: str = supplier_party.party_name.name
         elif supplier_party.party_legal_entity is not None:
-            supplier_name = supplier_party.party_legal_entity.registration_name
+            supplier_name: str = supplier_party.party_legal_entity.registration_name
 
-        return supplier_name
 
+        # supplier_name = supplier_name.replace('.', '')
+        # supplier_name = ''.join(letter for letter in supplier_name if (letter.isalnum() or letter.isspace()))
+
+        # supplier_name = supplier_name.strip()
+        no: str = self.id # .strip() #.replace(' ', '-')
+        dt = str(self.issue_date) # .strip()
+        amt: str = '{:.2f}'.format(self.legal_monetary_total.payable_amount)
+
+        # return self._sanitize_file_name('_'.join([supplier_name, dt, no])) + '_' + amt
+        return self._sanitize_file_name(supplier_name, dt, no, glue='_') + '_' + amt
+
+    def has_attachment(self) -> bool:
+        return self.additional_document_reference is not None and \
+                self.additional_document_reference.attachment is not None and \
+                self.additional_document_reference.attachment.embedded_binary_document is not None
+
+    def write_attachment(self, destination: Path) -> None:
+        with open(destination, 'wb') as dest:
+            dest.write(self.additional_document_reference.attachment.embedded_binary_document)
 
 def parse_ubl_invoice(xml_path: Path):
     """
