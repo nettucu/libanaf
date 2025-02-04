@@ -9,6 +9,14 @@ readme = "README.md"
 [tool.poetry.scripts]
 main = "libanaf.cli:app"
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+
 [tool.poetry.dependencies]
 python = "^3.11"
 requests = "^2.31.0"
