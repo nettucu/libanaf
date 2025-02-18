@@ -12,6 +12,8 @@ from authlib.integrations.httpx_client import AsyncOAuth2Client
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
 
+from libanaf.config import Configuration
+
 logger = logging.getLogger()
 
 
@@ -110,12 +112,18 @@ class LibANAF_AuthClient:
 
     # Write a function to update the access token and refresh token when called from AsyncOAuth2Client
     # The function will be called when the token expired and it should be based on authlib Auto Update Token feature
-    def update_token(
-        self, token: None, refresh_token: None, access_token: None
-    ) -> None:
+    def update_token(self, token, refresh_token) -> None:
         # TODO: do the update of the access token and refresh token
+        logger.debug(token)
+        logger.debug(refresh_token)
+
+        config = Configuration()
+        config.save_tokens(tokens=token)
+
         self.access_token = token["access_token"]
         self.refresh_token = token["refresh_token"]
+
+        self._make_client()
 
     def _make_client(self) -> None:
         self.oauth: AsyncOAuth2Client = AsyncOAuth2Client(

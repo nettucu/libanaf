@@ -1,7 +1,7 @@
 import logging
 
 import typer
-from typing_extensions import Annotated
+from typing import Annotated
 
 from .auth import LibANAF_AuthClient
 from .comms import make_auth_client
@@ -13,9 +13,12 @@ app.add_typer(invoices_app, name="invoices")
 
 logger = logging.getLogger()
 
+
 @app.callback()
-def main(ctx: typer.Context,
-         verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")] = False) -> None:
+def main(
+    ctx: typer.Context,
+    verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")] = False,
+) -> None:
     typer.echo("Starting the application ...")
     setup_logging(verbose)
     if verbose:
@@ -27,6 +30,8 @@ def auth() -> None:
     """Authenticate to ANAF portal and retrieve tokens."""
     auth_client: LibANAF_AuthClient = make_auth_client()
     token = auth_client.get_access_token()
-    logger.debug("token = %s" % token)
+    logger.debug(f"token = {token}")
 
 
+if __name__ == "__main__":
+    app()

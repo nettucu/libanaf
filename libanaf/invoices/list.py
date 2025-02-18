@@ -1,7 +1,7 @@
 import logging
 from asyncio import AbstractEventLoop
 from datetime import datetime
-from typing import Awaitable, Callable, List, Optional
+from typing import Awaitable, Callable, Optional
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from httpx import HTTPStatusError, Response
@@ -80,9 +80,7 @@ def list_invoices(
             [Optional[int], Optional[int], Optional[Filter]],
             Awaitable[dict[str, str | list[dict[str, str]]]],
         ] = fetch_invoice_list
-        data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(
-            func(days, cif, filter)
-        )
+        data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
 
         # data = loop.run_until_complete(fetch_invoice_list(days, cif, filter))
 

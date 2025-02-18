@@ -39,12 +39,12 @@
           "propagate": true
        },
        "httpx": {
-         "level": "DEBUG",
+         "level": "INFO",
          "handlers": ["console", "file"],
          "propagate": true
        },
        "httpcore": {
-         "level": "DEBUG",
+         "level": "INFO",
          "handlers": ["console", "file"],
          "propagate": true
        }

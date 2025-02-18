@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Optional
 
 from httpx import AsyncClient, HTTPStatusError, Response
 from rich.console import Console
@@ -23,9 +23,9 @@ from ._utils import is_invoice_downloaded
 from .list import fetch_invoice_list
 
 logger: logging.Logger = logging.getLogger(__name__)
-config: Dict[str, Any] = Configuration().load_config()
+config: dict[str, Any] = Configuration().load_config()
 
-#  165   0000: HTTP/1.1 200 
+#  165   0000: HTTP/1.1 200
 #  167   0000: Date: Thu, 13 Jun 2024 16:44:19 GMT
 #  169   0000: Content-Type: text/plain;charset=UTF-8
 #  171   0000: Content-Length: 92
@@ -37,12 +37,14 @@ config: Dict[str, Any] = Configuration().load_config()
 #  198   0040: ,"titlu":"Descarcare mesaj"}
 
 
-async def download_invoice(client: AsyncClient, invoice_id: str, download_dir: Path, progress: Progress, task_id, semaphore: asyncio.Semaphore):
+async def download_invoice(
+    client: AsyncClient, invoice_id: str, download_dir: Path, progress: Progress, task_id, semaphore: asyncio.Semaphore
+):
     """
     Download an invoice by ID and save it to the download directory.
     """
     async with semaphore:
-        await asyncio.sleep(0.1) # Add a delay of ~1 second before starting the download
+        await asyncio.sleep(0.1)  # Add a delay of ~1 second before starting the download
         #  https://api.anaf.ro/prod/FCTEL/rest/descarcare?id={invoice_id}
         url_base = config["efactura"]["download_url"]
         url: str = f"{url_base}?id={invoice_id}"
@@ -54,8 +56,8 @@ async def download_invoice(client: AsyncClient, invoice_id: str, download_dir: P
             logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
             return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
 
-        content_type = response.headers['content-type']
-        if any(s in content_type for s in ('application/json', 'text/plain')):
+        content_type = response.headers["content-type"]
+        if any(s in content_type for s in ("application/json", "text/plain")):
             # we have a content_type which suggests the response is actually an error
             try:
                 message = response.json()
@@ -69,13 +71,13 @@ async def download_invoice(client: AsyncClient, invoice_id: str, download_dir: P
         file_path: Path = download_dir / f"{invoice_id}.zip"
         with open(file_path, "wb") as file:
             file.write(response.content)
-            progress.update(task_id, advance=1, refresh=True) # len(response.content))
+            progress.update(task_id, advance=1, refresh=True)  # len(response.content))
 
         return file_path
 
 
 async def download_all_invoices(invoices_to_download: list[str], download_dir: Path) -> None:
-    semaphore = asyncio.Semaphore(5) # Limit to 5 concurrent downloads
+    semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent downloads
     auth_client: LibANAF_AuthClient = make_auth_client()
     # httpx: AsyncOAuth2Client = auth_client.get_client()
 
@@ -86,14 +88,16 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
-            transient=False
+            transient=False,
         ) as progress:
             # tasks = []
-            overall_progress = progress.add_task("Overall progress", total = len(invoices_to_download))
+            overall_progress = progress.add_task("Overall progress", total=len(invoices_to_download))
             progress.start_task(overall_progress)
 
             tasks = [
-                download_invoice(client, invoice_id, download_dir, progress, task_id=overall_progress, semaphore=semaphore)
+                download_invoice(
+                    client, invoice_id, download_dir, progress, task_id=overall_progress, semaphore=semaphore
+                )
                 for invoice_id in invoices_to_download
             ]
             # for invoice_id in invoices_to_download:
@@ -106,18 +110,21 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
             # for _ in results:
             #     progress.update(overall_progress, advance=1)
 
+
 def download(days: Optional[int] = 60, cif: Optional[int] = 19507820, filter: Optional[Filter] = Filter.P) -> None:
     """
     Download missing invoices and store them locally.
     """
     console = Console()
-    download_dir = Path(config['storage']['download_directory'])
+    download_dir = Path(config["storage"]["download_directory"])
     download_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
-        func: Callable[[Optional[int], Optional[int], Optional[Filter]], Awaitable[dict[str, str | list[dict[str, str]]]]] = fetch_invoice_list
+        func: Callable[
+            [Optional[int], Optional[int], Optional[Filter]], Awaitable[dict[str, str | list[dict[str, str]]]]
+        ] = fetch_invoice_list
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
         # data = loop.run_until_complete(fetch_invoice_list(days, cif, filter))
         messages: str | list[dict[str, str]] = data.get("mesaje", [])
@@ -128,9 +135,7 @@ def download(days: Optional[int] = 60, cif: Optional[int] = 19507820, filter: Op
 
         if isinstance(messages, list):  # noqa: E999
             invoices_to_download: list[str] = [
-                message["id"]
-                for message in messages
-                if not is_invoice_downloaded(message, download_dir)
+                message["id"] for message in messages if not is_invoice_downloaded(message, download_dir)
             ]
 
         if not invoices_to_download:

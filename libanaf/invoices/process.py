@@ -2,14 +2,12 @@ import asyncio
 import json
 import logging
 import zipfile
-from os import read
 from pathlib import Path
-from sys import exc_info
 from typing import Any
 
 import aiofiles
 import typer
-from httpx import AsyncClient, HTTPStatusError, ReadTimeout, Response, Timeout
+from httpx import AsyncClient, HTTPStatusError, ReadTimeout, Response
 from lxml.etree import XMLSyntaxError
 from pydantic import ValidationError
 from pydantic_xml import ParsingError
@@ -32,7 +30,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 async def get_pdf_path(xml_path: Path) -> Path:
-    outfname = xml_path.stem + '.pdf'
+    outfname = xml_path.stem + ".pdf"
 
     async with aiofiles.open(xml_path, "r", encoding="utf8") as xml_file:
         try:
@@ -42,7 +40,7 @@ async def get_pdf_path(xml_path: Path) -> Path:
 
             if invoice is not None:
                 fname = invoice.tofname()
-                outfname = xml_path.stem + '_' + fname + '.pdf'
+                outfname = xml_path.stem + "_" + fname + ".pdf"
 
             # if invoice.has_attachment():
             #     invoice.write_attachment(xml_path.parent / outfname)
@@ -63,7 +61,15 @@ async def get_pdf_path(xml_path: Path) -> Path:
 
     return xml_path.parent / outfname
 
-async def convert_to_pdf(client: AsyncClient, xml: Path, pdf: Path, semaphore: asyncio.Semaphore, progress: Progress, taskid) -> str:
+
+async def convert_to_pdf(
+    client: AsyncClient,
+    xml: Path,
+    pdf: Path,
+    semaphore: asyncio.Semaphore,
+    progress: Progress,
+    taskid,
+) -> str:
     """Calls the ANAF API service to convert XML invoices to PDF
 
     Args:
@@ -74,23 +80,29 @@ async def convert_to_pdf(client: AsyncClient, xml: Path, pdf: Path, semaphore: a
         await asyncio.sleep(0.5)
 
         url = config["efactura"]["xml2pdf_url"]
-        headers = {'Content-Type': 'text/plain'}
-        async with aiofiles.open(xml, 'r') as f:
+        headers = {"Content-Type": "text/plain"}
+        async with aiofiles.open(xml, "r") as f:
             data = await f.read()
 
         try:
-            response: Response = await client.post(url=url, headers=headers, data = data, timeout=30.0) # use 30s timeout for slow moving requests
+            response: Response = await client.post(
+                url=url, headers=headers, data=data, timeout=30.0
+            )  # use 30s timeout for slow moving requests
 
             if response.status_code != 200:
-                logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
+                logger.error(
+                    f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
+                )
                 return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
 
-            content_type = response.headers['content-type']
-            if any(s in content_type for s in ('application/json', 'text/plain')):
+            content_type = response.headers["content-type"]
+            if any(s in content_type for s in ("application/json", "text/plain")):
                 # we have a content_type which suggests the response is actually an error
                 try:
                     message = response.json()
-                    logger.error(f"Error received downloading: {url} - {message['eroare']}")
+                    logger.error(
+                        f"Error received downloading: {url} - {message['eroare']}"
+                    )
                     return message
                 except json.JSONDecodeError:
                     # this should not happen
@@ -98,37 +110,51 @@ async def convert_to_pdf(client: AsyncClient, xml: Path, pdf: Path, semaphore: a
                     return f"Unknow error for url: {url}"
 
             # Theoretically here all should be well
-            async with aiofiles.open(pdf, 'wb') as pdf_file:
+            async with aiofiles.open(pdf, "wb") as pdf_file:
                 await pdf_file.write(response.content)
 
             # progress.console.log(f"Processing {xml}")
             progress.update(task_id=taskid, file=xml, advance=1, refresh=True)
         except ReadTimeout as timeout:
-            progress.console.log(f"[bold red]HTTP Timeout occured:[/bold red]. [bold cyan]Ignoring ...[/bold cyan] {timeout}")
-            await asyncio.sleep(5) # sleep additional 5 seconds to cool ANAF down :)
+            progress.console.log(
+                f"[bold red]HTTP Timeout occured:[/bold red]. [bold cyan]Ignoring ...[/bold cyan] {timeout}"
+            )
+            await asyncio.sleep(5)  # sleep additional 5 seconds to cool ANAF down :)
 
     return f"SUCCESS: {xml}"
 
-async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: asyncio.Semaphore) -> None:
+
+async def process_invoices_async(
+    files_to_process: dict[Path, Path], semaphore: asyncio.Semaphore
+) -> None:
     console = Console()
 
     try:
         # semaphore = asyncio.Semaphore(2) # only 2 concurrent runs
         httpx_client: AsyncClient = make_auth_client().get_client()
-    
+
         with Progress(
             SpinnerColumn(),
             MofNCompleteColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
-            transient=False
+            transient=False,
         ) as progress:
-            overall_progress = progress.add_task("Overall progress", total=len(files_to_process))
+            overall_progress = progress.add_task(
+                "Overall progress", total=len(files_to_process)
+            )
             progress.start_task(overall_progress)
 
             tasks = [
-                convert_to_pdf(client=httpx_client, xml=_xml, pdf=_pdf, semaphore=semaphore, progress=progress, taskid=overall_progress)
+                convert_to_pdf(
+                    client=httpx_client,
+                    xml=_xml,
+                    pdf=_pdf,
+                    semaphore=semaphore,
+                    progress=progress,
+                    taskid=overall_progress,
+                )
                 for _xml, _pdf in files_to_process.items()
             ]
 
@@ -141,7 +167,7 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
         console.log(f"[bold red]HTTP error occurred:[/bold red] {e}")
     except ReadTimeout as e:
         console.log(f"[bold red]HTTP Timeout occured:[/bold red]. Ignoring ... {e}")
-        await asyncio.sleep(5) # sleep additional 5 seconds to cool ANAF down :)
+        await asyncio.sleep(5)  # sleep additional 5 seconds to cool ANAF down :)
     except Exception as e:
         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
         console.print(f"[bold red]An error occurred:[/bold red] {e}")
@@ -158,7 +184,7 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
 #             files_to_process[xml_file] = pdf_file
 
 #         # logger.debug(f"pdf_file = {pdf_file}")
-    
+
 #     logger.debug(f"files_to_process = {files_to_process}")
 
 #     try:
@@ -172,16 +198,23 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
 def unzip_invoices(download_dir: Path) -> None:
     for zip_file in download_dir.glob("*.zip"):
         try:
-            with zipfile.ZipFile(zip_file, 'r') as zip_handle:
+            with zipfile.ZipFile(zip_file, "r") as zip_handle:
                 for member_info in zip_handle.infolist():
                     if member_info.filename.startswith("semnatura"):
                         # ignore XML signature file
                         continue
 
-                    new_dest = download_dir / (zip_file.stem + "_" + member_info.filename)
+                    new_dest = download_dir / (
+                        zip_file.stem + "_" + member_info.filename
+                    )
                     if not new_dest.exists():
-                        typer.echo(f"Extracting {member_info.filename} to {new_dest}", color = True)
-                        extracted = Path(zip_handle.extract(member=member_info, path=download_dir))
+                        typer.echo(
+                            f"Extracting {member_info.filename} to {new_dest}",
+                            color=True,
+                        )
+                        extracted = Path(
+                            zip_handle.extract(member=member_info, path=download_dir)
+                        )
                         extracted.rename(new_dest)
         except zipfile.BadZipFile as e:
             # the zip file is malformed
@@ -192,17 +225,19 @@ def process_invoices():
     """
     Process downloaded invoices: unpack the zip file and convert XML to PDF.
     """
-    download_dir = Path(config['storage']['download_directory'])
+    download_dir = Path(config["storage"]["download_directory"])
 
     unzip_invoices(download_dir=download_dir)
 
-    files_to_process: Dict[Path, Path] = {}
+    files_to_process: dict[Path, Path] = {}
     for xml_file in download_dir.glob("*.xml"):
         pdf_file: Path = asyncio.run(get_pdf_path(xml_file))
         if not pdf_file.exists():
             files_to_process[xml_file] = pdf_file
 
     semaphore = asyncio.Semaphore(2)
-    asyncio.run(process_invoices_async(files_to_process=files_to_process, semaphore=semaphore))
+    asyncio.run(
+        process_invoices_async(files_to_process=files_to_process, semaphore=semaphore)
+    )
 
     # convert_invoices(download_dir=download_dir)

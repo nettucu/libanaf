@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:qdt="urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2" xmlns:udt="urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2" xmlns:ccts="urn:un:unece:uncefact:documentation:2" xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2 http://docs.oasis-open.org/ubl/os-UBL-2.1/xsd/maindoc/UBL-Invoice-2.1.xsd">
+	<cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID>
+	<cbc:ProfileID>1</cbc:ProfileID>
+	<!--BT-1-->
+	<cbc:ID>POKA W 9262655</cbc:ID>
+	<!--BT-2-->
+	<cbc:IssueDate>2024-05-17</cbc:IssueDate>
+	<!--BT-9-->
+	<cbc:DueDate>2024-05-17</cbc:DueDate>
+	<!--BT-3-->
+	<cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+	<!--BT-5-->
+	<cbc:DocumentCurrencyCode>RON</cbc:DocumentCurrencyCode>
+	<!--BT-6-->
+	<cbc:TaxCurrencyCode>RON</cbc:TaxCurrencyCode>
+	<cbc:BuyerReference>19207022344064</cbc:BuyerReference>
+	<cac:InvoicePeriod><!--BT-73-->
+		<cbc:StartDate>2024-05-17</cbc:StartDate>
+		<!--BT-74-->
+		<cbc:EndDate>2024-05-17</cbc:EndDate>
+		<cbc:DescriptionCode>3</cbc:DescriptionCode>
+	</cac:InvoicePeriod>
+	<cac:OrderReference><!--BT-13-->
+		<cbc:ID>POKACOM6072485</cbc:ID>
+		<cbc:SalesOrderID>POKACOM6072485</cbc:SalesOrderID>
+	</cac:OrderReference>
+	<cac:AccountingSupplierParty>
+		<cac:Party>
+			<cbc:EndpointID schemeID="EM">poka@poka-dent.ro</cbc:EndpointID>
+			<cac:PartyIdentification>
+				<cbc:ID schemeID="0206">J35/2284/1991</cbc:ID>
+			</cac:PartyIdentification>
+			<cac:PartyName><!--BT-28-->
+				<cbc:Name>SC TEHNODENT POKA SRL</cbc:Name>
+			</cac:PartyName>
+			<cac:PostalAddress><!--BT-35-->
+				<cbc:StreetName>DR. RUSSEL Nr.5 Ap.35 CP.300567</cbc:StreetName>
+				<!--BT-37-->
+				<cbc:CityName>TIMISOARA</cbc:CityName>
+				<!--BT-39-->
+				<cbc:CountrySubentity>RO-TM</cbc:CountrySubentity>
+				<cac:Country><!--BT-40-->
+					<cbc:IdentificationCode>RO</cbc:IdentificationCode>
+				</cac:Country>
+			</cac:PostalAddress>
+			<cac:PartyTaxScheme><!--BT-31-->
+				<cbc:CompanyID>RO1813923</cbc:CompanyID>
+				<cac:TaxScheme>
+					<cbc:ID>VAT</cbc:ID>
+				</cac:TaxScheme>
+			</cac:PartyTaxScheme>
+			<cac:PartyLegalEntity><!--BT-27-->
+				<cbc:RegistrationName>SC TEHNODENT POKA SRL</cbc:RegistrationName>
+				<!--BT-30  -->
+				<cbc:CompanyID schemeID="0210">RO1813923</cbc:CompanyID>
+				<cbc:CompanyLegalForm>J35/2284/1991</cbc:CompanyLegalForm>
+			</cac:PartyLegalEntity>
+			<cac:Contact><!--BT-41-->
+				<cbc:Name>DAVID ANCA</cbc:Name>
+				<cbc:Telephone>0722336003</cbc:Telephone>
+				<cbc:ElectronicMail>anca.david@poka-dent.ro</cbc:ElectronicMail>
+			</cac:Contact>
+		</cac:Party>
+	</cac:AccountingSupplierParty>
+	<cac:AccountingCustomerParty>
+		<cac:Party><!--BT-49-->
+			<cbc:EndpointID schemeID="EM">mtrifu@gmail.com</cbc:EndpointID>
+			<cac:PartyName><!--BT-45-->
+				<cbc:Name>TRIFU MIHAELA DR CMI MD</cbc:Name>
+			</cac:PartyName>
+			<cac:PostalAddress><!--BT-50-->
+				<cbc:StreetName>OLTET Nr. 8 Bl. 16 Sc. A Ap. 1</cbc:StreetName>
+				<!--BT-52-->
+				<cbc:CityName>BRASOV</cbc:CityName>
+				<!--BT-54-->
+				<cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+				<cac:Country><!--BT-55-->
+					<cbc:IdentificationCode>RO</cbc:IdentificationCode>
+				</cac:Country>
+			</cac:PostalAddress>
+			<cac:PartyLegalEntity>
+				<cbc:RegistrationName>TRIFU MIHAELA DR CMI MD</cbc:RegistrationName>
+				<cbc:CompanyID schemeID="0210">19507820</cbc:CompanyID>
+			</cac:PartyLegalEntity>
+		</cac:Party>
+	</cac:AccountingCustomerParty>
+	<cac:Delivery><!--BT-72-->
+		<cbc:ActualDeliveryDate>2024-05-17</cbc:ActualDeliveryDate>
+		<cac:DeliveryLocation><!--BT-71-->
+			<cbc:ID schemeID="0088">40205</cbc:ID>
+			<cac:Address><!--BT-75-->
+				<cbc:StreetName>EGRETEI Nr. 16 Bl. B14</cbc:StreetName>
+				<!--BT-77-->
+				<cbc:CityName>BRASOV</cbc:CityName>
+				<!--BT-79-->
+				<cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+				<cac:Country><!--BT-80-->
+					<cbc:IdentificationCode>RO</cbc:IdentificationCode>
+				</cac:Country>
+			</cac:Address>
+		</cac:DeliveryLocation>
+		<cac:DeliveryParty>
+			<cac:PartyName><!--BT-70-->
+				<cbc:Name>TRIFU MIHAELA DR CMI MD</cbc:Name>
+			</cac:PartyName>
+		</cac:DeliveryParty>
+	</cac:Delivery>
+	<cac:PaymentMeans><!--BT-81-->
+		<cbc:PaymentMeansCode name="Promissory note">60</cbc:PaymentMeansCode>
+		<cac:PayeeFinancialAccount><!--BT-84-->
+			<cbc:ID>RO97INGB0002008200838911</cbc:ID>
+		</cac:PayeeFinancialAccount>
+	</cac:PaymentMeans>
+	<cac:PaymentTerms><!--BT-20-->
+		<cbc:Note>100% 17.05.2024;</cbc:Note>
+	</cac:PaymentTerms>
+	<cac:TaxTotal><!--BT-111-->
+		<cbc:TaxAmount currencyID="RON">6.24</cbc:TaxAmount>
+		<cac:TaxSubtotal><!--BT-116-->
+			<cbc:TaxableAmount currencyID="RON">32.82</cbc:TaxableAmount>
+			<!--BT-117-->
+			<cbc:TaxAmount currencyID="RON">6.24</cbc:TaxAmount>
+			<cac:TaxCategory><!--BT-118-->
+				<cbc:ID>S</cbc:ID>
+				<!--BT-119-->
+				<cbc:Percent>19</cbc:Percent>
+				<cac:TaxScheme>
+					<cbc:ID>VAT</cbc:ID>
+				</cac:TaxScheme>
+			</cac:TaxCategory>
+		</cac:TaxSubtotal>
+	</cac:TaxTotal>
+	<cac:LegalMonetaryTotal><!--BT-106-->
+		<cbc:LineExtensionAmount currencyID="RON">32.82</cbc:LineExtensionAmount>
+		<!--BT-109-->
+		<cbc:TaxExclusiveAmount currencyID="RON">32.82</cbc:TaxExclusiveAmount>
+		<!--BT-112-->
+		<cbc:TaxInclusiveAmount currencyID="RON">39.06</cbc:TaxInclusiveAmount>
+		<!--BT-107-->
+		<cbc:AllowanceTotalAmount currencyID="RON">0</cbc:AllowanceTotalAmount>
+		<!--BT-108-->
+		<cbc:ChargeTotalAmount currencyID="RON">0</cbc:ChargeTotalAmount>
+		<!--BT-113-->
+		<cbc:PrepaidAmount currencyID="RON">0</cbc:PrepaidAmount>
+		<!--BT-114-->
+		<cbc:PayableRoundingAmount currencyID="RON">0</cbc:PayableRoundingAmount>
+		<!--BT-115-->
+		<cbc:PayableAmount currencyID="RON">39.06</cbc:PayableAmount>
+	</cac:LegalMonetaryTotal>
+	<cac:InvoiceLine><!--BT-126-->
+		<cbc:ID>1</cbc:ID>
+		<!--BT-129 BT-130-->
+		<cbc:InvoicedQuantity unitCode="H87">2</cbc:InvoicedQuantity>
+		<!--BT-131-->
+		<cbc:LineExtensionAmount currencyID="RON">32.82</cbc:LineExtensionAmount>
+		<cac:Item><!--BT-153-->
+			<cbc:Name>CLINIQUE OCHELARI PROTECTIE RAMA ALBASTRA</cbc:Name>
+			<cac:SellersItemIdentification>
+				<cbc:ID>100018</cbc:ID>
+			</cac:SellersItemIdentification>
+			<cac:OriginCountry><!--BT-159-->
+				<cbc:IdentificationCode>RO</cbc:IdentificationCode>
+			</cac:OriginCountry>
+			<cac:ClassifiedTaxCategory><!--BT-151-->
+				<cbc:ID>S</cbc:ID>
+				<!--BT-152-->
+				<cbc:Percent>19</cbc:Percent>
+				<cac:TaxScheme>
+					<cbc:ID>VAT</cbc:ID>
+				</cac:TaxScheme>
+			</cac:ClassifiedTaxCategory>
+		</cac:Item>
+		<cac:Price><!--BT-146-->
+			<cbc:PriceAmount currencyID="RON">16.41</cbc:PriceAmount>
+			<!--BT-149 BT-150-->
+			<cbc:BaseQuantity unitCode="H87">1</cbc:BaseQuantity>
+		</cac:Price>
+	</cac:InvoiceLine>
+</Invoice>

@@ -2,7 +2,9 @@ from typing import List, Optional
 
 from pydantic_xml import BaseXmlModel, attr, element, wrapped
 
-from libanaf.ubl.types import NSMAP
+from libanaf.ubl.ubl_types import NSMAP, NSMAP_CREDIT_NOTE
+
+enum
 
 
 class Country(BaseXmlModel, tag="Country", ns="cac", nsmap=NSMAP):
@@ -16,7 +18,13 @@ class PostalAddress(BaseXmlModel, tag="PostalAddress", search_mode="unordered", 
     postal_zone: Optional[str] = element(tag="PostalZone", default=None, ns="cbc", nsmap=NSMAP)
     country_subentity: str = element(tag="CountrySubentity", ns="cbc", nsmap=NSMAP)
     country: Country
-    address_line: Optional[List[str]] = wrapped("AddressLine", default=None, ns="cac", nsmap=NSMAP, entity=element(tag="Line", default=None, ns="cbc", nsmap=NSMAP))
+    address_line: Optional[List[str]] = wrapped(
+        "AddressLine",
+        default=None,
+        ns="cac",
+        nsmap=NSMAP,
+        entity=element(tag="Line", default=None, ns="cbc", nsmap=NSMAP),
+    )
 
 
 class PartyIdentification(BaseXmlModel, tag="PartyIdentification", ns="cac", nsmap=NSMAP):
@@ -73,46 +81,72 @@ class OrderLineReference(BaseXmlModel, tag="OrderLineReference", ns="cac", nsmap
 
 
 class CommodityClassification(BaseXmlModel, tag="CommodityClassification", ns="cac", nsmap=NSMAP):
-    item_classification_code: Optional[str] = element(tag="ItemClassificationCode", default="None", ns="cbc", nsmap=NSMAP)
-    list_id: Optional[str] = wrapped("ItemClassificationCode", ns="cbc", nsmap=NSMAP, default=None, entity=attr("listID"))
+    item_classification_code: Optional[str] = element(
+        tag="ItemClassificationCode", default="None", ns="cbc", nsmap=NSMAP
+    )
+    list_id: Optional[str] = wrapped(
+        "ItemClassificationCode", ns="cbc", nsmap=NSMAP, default=None, entity=attr("listID")
+    )
 
 
 class Item(BaseXmlModel, tag="Item", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    description: str = element(tag="Description", default=None, ns="cbc", nsmap=NSMAP)
     name: str = element(tag="Name", ns="cbc", nsmap=NSMAP)
-    seller_item_id: Optional[str] = wrapped("SellersItemIdentification", ns="cac", nsmap=NSMAP, default=None, entity=element(tag="ID", default=None, ns="cbc", nsmap=NSMAP))
-    origin_country: Optional[str] = wrapped("OriginCountry", ns="cac", nsmap=NSMAP, default=None, entity=element("IdentificationCode", default=None, ns="cbc", nsmap=NSMAP))
+    seller_item_id: Optional[str] = wrapped(
+        "SellersItemIdentification",
+        ns="cac",
+        nsmap=NSMAP,
+        default=None,
+        entity=element(tag="ID", default=None, ns="cbc", nsmap=NSMAP),
+    )
+    origin_country: Optional[str] = wrapped(
+        "OriginCountry",
+        ns="cac",
+        nsmap=NSMAP,
+        default=None,
+        entity=element("IdentificationCode", default=None, ns="cbc", nsmap=NSMAP),
+    )
     commodity_classification: Optional[CommodityClassification] = None
     classified_tax_category: ClassifiedTaxCategory
 
 
-class InvoiceLine(BaseXmlModel, tag="InvoiceLine", search_mode="unordered", ns="cac", nsmap=NSMAP):
+class InvoiceLine(BaseXmlModel, tag="InvoiceLine", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
     id: str = element(tag="ID", ns="cbc", nsmap=NSMAP)
     note: Optional[List[str]] = element(tag="Note", default=None, ns="cbc", nsmap=NSMAP)
     invoiced_quantity: float = element(tag="InvoicedQuantity", ns="cbc", nsmap=NSMAP)
     line_extension_amount: float = element(tag="LineExtensionAmount", ns="cbc", nsmap=NSMAP)
     order_line_reference: Optional[OrderLineReference] = None
-    item: Item = element(tag="Item", ns="cac", nsmap=NSMAP)
+    item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP)
     price: Price = element(tag="Price", ns="cac", nsmap=NSMAP)
 
 
-class TaxCategory(BaseXmlModel, tag="TaxCategory", search_mode="unordered", ns="cac", nsmap=NSMAP):
+class CreditNoteLine(BaseXmlModel, tag="CreditNoteLine", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
+    id: str = element(tag="ID", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
+    credited_quantity: float = element(tag="CreditedQuantity", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
+    line_extension_amount: float = element(tag="LineExtensionAmount", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
+    item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
+    price: Price = element(tag="Price", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
+
+
+class TaxCategory(BaseXmlModel, tag="TaxCategory", search_mode="unordered", ns="cac"):  # nsmap=NSMAP):
     id: Optional[str] = element(tag="ID", default=None, ns="cbc", nsmap=NSMAP)
     tax_exempt_reason_code: Optional[str] = element(tag="TaxExemptionReasonCode", default=None, ns="cbc", nsmap=NSMAP)
     tax_exempt_reason: Optional[str] = element(tag="TaxExemptionReason", default=None, ns="cbc", nsmap=NSMAP)
     tax_scheme: TaxScheme
 
 
-class TaxSubtotal(BaseXmlModel, tag="TaxSubtotal", ns="cac", nsmap=NSMAP):
+class TaxSubtotal(BaseXmlModel, tag="TaxSubtotal", ns="cac"):  # nsmap=NSMAP):
     taxable_amount: float = element(tag="TaxableAmount", ns="cbc", nsmap=NSMAP)
     tax_amount: float = element(tag="TaxAmount", ns="cbc", nsmap=NSMAP)
 
 
 class TaxTotal(BaseXmlModel, tag="TaxTotal", ns="cac", nsmap=NSMAP):
     tax_amount: float = element(tag="TaxAmount", ns="cbc", nsmap=NSMAP)
+    currency_id: str = wrapped("TaxAmount", ns="cbc", nsmap=NSMAP, default=None, entity=attr("currencyID"))
     tax_subtotal: TaxSubtotal
 
 
-class LegalMonetaryTotal(BaseXmlModel, tag="LegalMonetaryTotal", search_mode="unordered", ns="cac", nsmap=NSMAP):
+class LegalMonetaryTotal(BaseXmlModel, tag="LegalMonetaryTotal", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
     line_extension_amount: Optional[float] = element(tag="LineExtensionAmount", default=0.0, ns="cbc", nsmap=NSMAP)
     tax_exclusive_amount: Optional[float] = element(tag="TaxExclusiveAmount", default=0.0, ns="cbc", nsmap=NSMAP)
     tax_inclusive_amount: Optional[float] = element(tag="TaxInclusiveAmount", default=0.0, ns="cbc", nsmap=NSMAP)
@@ -123,7 +157,7 @@ class LegalMonetaryTotal(BaseXmlModel, tag="LegalMonetaryTotal", search_mode="un
     payable_amount: float = element(tag="PayableAmount", ns="cbc", nsmap=NSMAP)
 
 
-class Attachment(BaseXmlModel, tag="Attachment", ns="cac", nsmap=NSMAP):
+class Attachment(BaseXmlModel, tag="Attachment", ns="cac"):  # , nsmap=NSMAP):
     embedded_binary_document: bytes = element("EmbeddedDocumentBinaryObject", ns="cbc", nsmap=NSMAP)
 
 
@@ -148,6 +182,7 @@ class PayeeFinancialAccount(BaseXmlModel, tag="PayeeFinancialAccount", search_mo
 
 
 class PaymentMeans(BaseXmlModel, tag="PaymentMeans", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    id: Optional[str] = element(name="ID", default=None, ns="cbc", nsmap=NSMAP)
     payment_means_code: Optional[str] = element(name="PaymentMeansCode", default=None, ns="cbc", nsmap=NSMAP)
     payment_id: Optional[str] = element(name="PaymentID", default=None, ns="cbc", nsmap=NSMAP)
     payee_financial_account: Optional[PayeeFinancialAccount] = None

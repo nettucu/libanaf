@@ -14,12 +14,12 @@
       "justMyCode": false
     },
     {
-        "name": "Debug auth",
-        "type": "debugpy",
-        "request": "launch",
-        "program": "${workspaceFolder}/bin/main.py",
-        "console": "integratedTerminal",
-        "args": ["auth"]
+      "name": "Debug auth",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/main.py",
+      "console": "integratedTerminal",
+      "args": ["auth"]
     },
     {
       "name": "Debug invoice-list",
@@ -27,7 +27,8 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/main.py",
       "console": "integratedTerminal",
-      "args": ["invoices", "list", "60", "19507820", "--filter", "P"]
+      "args": ["invoices", "list", "60", "19507820", "--filter", "P"],
+      "justMyCode": false
     },
     {
       "name": "Debug invoice-download",
@@ -46,5 +47,5 @@
       "args": ["invoices", "process"],
       "justMyCode": false
     }
-]
+  ]
 }
