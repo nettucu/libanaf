@@ -1,0 +1,495 @@
+<?xml version="1.0"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:qdt="urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2" xmlns:ccts="urn:un:unece:uncefact:documentation:2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:udt="urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2" xsi:schemaLocation="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2 ../../UBL-2.1(1)/xsd/maindoc/UBL-Invoice-2.1.xsd">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID>
+  <cbc:ID>FIMCGB8202</cbc:ID>
+  <cbc:IssueDate>2025-02-05</cbc:IssueDate>
+  <cbc:DueDate>2025-03-07</cbc:DueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:Note>-</cbc:Note>
+  <cbc:DocumentCurrencyCode>RON</cbc:DocumentCurrencyCode>
+  <cac:AdditionalDocumentReference>
+    <cbc:ID>125372</cbc:ID>
+  </cac:AdditionalDocumentReference>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cac:PartyName>
+        <cbc:Name>GURSK MEDICA SRL</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>INTR. VLASCEANU DUMITRU</cbc:StreetName>
+        <cbc:AdditionalStreetName>18B </cbc:AdditionalStreetName>
+        <cbc:CityName>Voluntari</cbc:CityName>
+        <cbc:CountrySubentity>RO-IF</cbc:CountrySubentity>
+        <cac:AddressLine>
+          <cbc:Line>INTR. VLASCEANU DUMITRU 18B  Voluntari</cbc:Line>
+        </cac:AddressLine>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>RO25629635</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>GURSK MEDICA SRL</cbc:RegistrationName>
+        <cbc:CompanyID>J23/1344/2012</cbc:CompanyID>
+        <cbc:CompanyLegalForm>Capital social: 600000</cbc:CompanyLegalForm>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Name>URS ANDREI-CONSTANTIN</cbc:Name>
+        <cbc:Telephone>0769948354</cbc:Telephone>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyName>
+        <cbc:Name>CABINET MEDICAL INDIVIDUAL DE MEDICINA DENTARA     DR.TRIFU  MIHAELA</cbc:Name>
+      </cac:PartyName>
+      <cac:PostalAddress>
+        <cbc:StreetName>JUD. BRASOV, MUN. BRASOV, STR. OLTET, NR.8, BL.16, SC.A, AP.1</cbc:StreetName>
+        <cbc:CityName>Brasov</cbc:CityName>
+        <cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+        <cac:AddressLine>
+          <cbc:Line>Sector , JUD. BRASOV, MUN. BRASOV, STR. OLTET, NR.8, BL.16, SC.A, AP.1, Nr. , Bl. , Sc. , Et. , Ap. </cbc:Line>
+        </cac:AddressLine>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>19507820</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>NPVAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>CABINET MEDICAL INDIVIDUAL DE MEDICINA DENTARA     DR.TRIFU  MIHAELA</cbc:RegistrationName>
+        <cbc:CompanyID>19507820</cbc:CompanyID>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:ElectronicMail>mtrifu@gmail.com</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:Delivery>
+    <cbc:ActualDeliveryDate>2025-02-06</cbc:ActualDeliveryDate>
+    <cac:DeliveryLocation>
+      <cac:Address>
+        <cbc:StreetName>JUD. BRASOV, MUN. BRASOV, STR. OLTET, NR.8, BL.16, SC.A, AP.1</cbc:StreetName>
+        <cbc:CityName>Brasov</cbc:CityName>
+        <cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+        <cac:AddressLine>
+          <cbc:Line>Sector , JUD. BRASOV, MUN. BRASOV, STR. OLTET, NR.8, BL.16, SC.A, AP.1, Nr. , Bl. , Sc. , Et. , Ap. </cbc:Line>
+        </cac:AddressLine>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:Address>
+    </cac:DeliveryLocation>
+    <cac:DeliveryParty>
+      <cac:PartyName>
+        <cbc:Name>CABINET MEDICAL INDIVIDUAL DE MEDICINA DENTARA     DR.TRIFU  MIHAELA</cbc:Name>
+      </cac:PartyName>
+    </cac:DeliveryParty>
+  </cac:Delivery>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode>10</cbc:PaymentMeansCode>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>RO51BACX0000000363717001</cbc:ID>
+      <cac:FinancialInstitutionBranch>
+        <cbc:ID>UniCredit Bank Romania</cbc:ID>
+      </cac:FinancialInstitutionBranch>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+    <cbc:Amount currencyID="RON">27503.63</cbc:Amount>
+    <cac:TaxCategory>
+      <cbc:ID>Z</cbc:ID>
+      <cbc:Percent>0.00</cbc:Percent>
+      <cac:TaxScheme>
+        <cbc:ID>VAT</cbc:ID>
+      </cac:TaxScheme>
+    </cac:TaxCategory>
+  </cac:AllowanceCharge>
+  <cac:AllowanceCharge>
+    <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+    <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+    <cbc:Amount currencyID="RON">17915.13</cbc:Amount>
+    <cac:TaxCategory>
+      <cbc:ID>S</cbc:ID>
+      <cbc:Percent>19.00</cbc:Percent>
+      <cac:TaxScheme>
+        <cbc:ID>VAT</cbc:ID>
+      </cac:TaxScheme>
+    </cac:TaxCategory>
+  </cac:AllowanceCharge>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="RON">0.00</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="RON">28571.97</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="RON">0.00</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="RON">0.00</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="RON">0.00</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="RON">73990.73</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="RON">28571.97</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="RON">28571.97</cbc:TaxInclusiveAmount>
+    <cbc:AllowanceTotalAmount currencyID="RON">45418.76</cbc:AllowanceTotalAmount>
+    <cbc:PayableAmount currencyID="RON">28571.97</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">476.20</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX3610SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX3610SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">476.20</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX3612SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX3612SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>3</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">5.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">2381.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX4008SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4008SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>4</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">20.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">9523.98</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX4012SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4012SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>5</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">5.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">2381.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX4014SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4014SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>6</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">15.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">7142.99</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX4510SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4510SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>7</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">5.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">2381.00</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX4512SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4512SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>8</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">476.20</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX5007SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX5007SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>9</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">2.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">952.40</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX5008SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX5008SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>10</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">3.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">1428.60</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX5010SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX5010SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>11</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">476.20</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX6008SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX6008SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>12</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">1.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">476.20</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FX6010SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX6010SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>13</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">50.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">23809.96</cbc:LineExtensionAmount>
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+      <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+      <cbc:Amount currencyID="RON">-23809.96</cbc:Amount>
+    </cac:AllowanceCharge>
+    <cac:Item>
+      <cbc:Name>FX4010SW - IMPLANT DENTAR SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>FX4010SW-III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">476.19920000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>14</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">2.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">17915.13</cbc:LineExtensionAmount>
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+      <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+      <cbc:Amount currencyID="RON">-17915.13</cbc:Amount>
+    </cac:AllowanceCharge>
+    <cac:Item>
+      <cbc:Name>UXNF - KIT CHIRURGICAL SuperLine III</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>UXNF- SuperLine III</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">8957.56400000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>15</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">110.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">3693.67</cbc:LineExtensionAmount>
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+      <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+      <cbc:Amount currencyID="RON">-3693.67</cbc:Amount>
+    </cac:AllowanceCharge>
+    <cac:Item>
+      <cbc:Name>CS36 - SURUB DE ACOPERIRE</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>CS36</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>Z</cbc:ID>
+        <cbc:Percent>0.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">33.57880000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+</Invoice>
