@@ -46,6 +46,15 @@
       "console": "integratedTerminal",
       "args": ["invoices", "process"],
       "justMyCode": false
+    },
+    {
+      "name": "Debug invoice-show",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/main.py",
+      "console": "integratedTerminal",
+      "args": ["invoices", "show", "-i", "FIMCGb8202"],
+      "justMyCode": false
     }
   ]
 }
