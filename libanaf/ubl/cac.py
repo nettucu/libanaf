@@ -109,6 +109,8 @@ class Party(BaseXmlModel, tag="Party", search_mode="unordered", ns="cac", nsmap=
             if self.party_legal_entity and self.party_legal_entity.company_id
             else "N/A"
         )
+        if reg_com == cif:
+            reg_com = "N/A"
         formatted_address, address, city, county = (
             self.postal_address.get_display_str().values() if self.postal_address else {"N/A", "N/A", "N/A", "N/A"}
         )
@@ -297,13 +299,12 @@ class FinancialInstitutionBranch(BaseXmlModel, tag="FinancialInstitutionBranch",
 class PayeeFinancialAccount(BaseXmlModel, tag="PayeeFinancialAccount", search_mode="unordered", ns="cac", nsmap=NSMAP):
     id: Optional[str] = element(tag="ID", default=None, ns="cbc", nsmap=NSMAP)
     name: Optional[str] = element(tag="Name", default=None, ns="cbc", nsmap=NSMAP)
-    financial_institution_branch: Optional[FinancialInstitutionBranch]
+    financial_institution_branch: Optional[FinancialInstitutionBranch] = None
 
     def get_display_str(self) -> dict[str, str]:
         iban = self.id if self.id else "N/A"
-        bank = (
-            self.financial_institution_branch.get_display_str()["bank"] if self.financial_institution_branch else "N/A"
-        )
+        bank = self.name if self.name else "N/A"
+        bank += self.financial_institution_branch.get_display_str()["bank"] if self.financial_institution_branch else ""
 
         return {
             "formatted": f"IBAN: {iban}\nBanca: {bank}",
@@ -314,9 +315,9 @@ class PayeeFinancialAccount(BaseXmlModel, tag="PayeeFinancialAccount", search_mo
 
 class PaymentMeans(BaseXmlModel, tag="PaymentMeans", search_mode="unordered", ns="cac", nsmap=NSMAP):
     id: Optional[str] = element(tag="ID", default=None, ns="cbc", nsmap=NSMAP)
-    payment_means_code: Optional[str] = element(tag="PaymentMeansCode", default=None, ns="cbc", nsmap=NSMAP)
+    payment_means_code: str = element(tag="PaymentMeansCode", default=None, ns="cbc", nsmap=NSMAP)
     payment_id: Optional[str] = element(tag="PaymentID", default=None, ns="cbc", nsmap=NSMAP)
-    payee_financial_account: Optional[PayeeFinancialAccount]
+    payee_financial_account: Optional[PayeeFinancialAccount] = None
 
     def get_display_str(self) -> dict[str, str]:
         if self.payee_financial_account:

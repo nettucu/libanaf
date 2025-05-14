@@ -4,18 +4,17 @@ This document describes the requirements for a python library and application wh
 
 ## Relevant documents for the project
 
-[Procedura de inregistrare a aplicaties in ANAF OAUTH](Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)(https://static.anaf.ro/static/10/Anaf/Informatii_R/API/Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
-[Efactura API](<prezentare api efactura.pdf>)(https://mfinante.gov.ro/static/10/eFactura/prezentare%20api%20efactura.pdf)
-[Informații tehnice](https://mfinante.gov.ro/ro/web/efactura/informatii-tehnice)
+- [Procedura de inregistrare a aplicaties in ANAF OAUTH](https://static.anaf.ro/static/10/Anaf/Informatii_R/API/Oauth_procedura_inregistrare_aplicatii_portal_ANAF.pdf)
+- [Efactura API](https://mfinante.gov.ro/static/10/eFactura/prezentare%20api%20efactura.pdf)
+- [Informații tehnice](https://mfinante.gov.ro/ro/web/efactura/informatii-tehnice)
 
 ## Other similar projects
 - [E-factura by letconex](https://github.com/letconex/E-factura) - Javscript not really working
 - [RO E-FACTURA ANAF](https://github.com/Rebootcodesoft/efactura_anaf) - PHP, seems to be quite good
-- 
+-
 
 ## General project requirements
 
-- Project name is libanaf
 - Python project management is done with poetry to manage required libraries
 - Python version supported is version 3.11 and later
 - Git will be used to manage the source code
@@ -31,8 +30,7 @@ This document describes the requirements for a python library and application wh
 - For output the rich library will be used, however it will not be used to directly output logging messages, instead logging library will be used, unless special console output is required
 - Application configuration you must use configuration files stored in a conf/ directory beneath the main application folder
 - The configuration files will use TOML format, however you have to use envtoml to read the files so that enviroment variables will be interpolated
-- The configuration should be done using a singleton class to make sure it is only read / created once
-per application
+- The configuration should be done using a singleton class to make sure it is only read / created once per application
 - libanaf must be a separate module from the main application and it should have no dependencies on the
 application configuration, it must expose an API which could be used by other applications, either through
 function parameters or through environment variables
@@ -40,13 +38,10 @@ function parameters or through environment variables
 - The project uses secrets as per above document (ANAF OAUTH), the security of secrets is important. They should be stored securely under the main project directory in secrets/ subfolder and an .env file read with dotenv library
 - The directory structure should contain a bin/ directory which will call the rest of the application
   the main app binary in this directory should be minimal, it should not be the main typer application object
-- The configuration should be done using a singleton class to make sure it is only read / created once
-per application
 - The application must also create logs under logs/ directory and the configuration of the logging framework must be done with json file stored in conf/logging_py.json as well as console logging via RichHandler, however the logging should be done with the logging framework and the Rich logging is to be done by the configuration
 - libanaf must be a separate module from the main application and it should have no dependencies on the
 application configuration, it must expose an API which could be used by other applications, either through
 function parameters or through environment variables
-- the application should have as common parameter the verbosity level and logging needs to be setup based on that
 - The application/library should raise errors when network communication is not possible or errors are returned from the ANAF API
 - The project should use extensive testing
 - httpx library will be used to make web requests
@@ -62,13 +57,13 @@ function parameters or through environment variables
 
 Let's generate the application; first the proposed directory structure then the code
 
-================
+---
 
 Next step is to implement the necessary steps to get the list of available invoices from the API, 3. a) in the document "prezentare api efactura.pdf"
 
-* It should use the api supplied by *api.anaf.ro/prod/*
+* It should use the api supplied by ***api.anaf.ro/prod/***
 * It should be a typer command in the application called list-invoices
-* The command should take three parameters: 
+* The command should take three parameters:
     - the number of days (zile={val1}); default value 60
     - cif (cif={val2}) which should be a number, default value 19507820
     - filter (filtru={val3}) which should be an enum with values E, T, P, R ; default value P
@@ -85,7 +80,7 @@ e) The request must use the authentication token in the Authorization header:
     Authorization: Bearer <TOKEN>
     where <TOKEN> is from the configuration section connection and is named access_token
 f) The response is a json list in the following format:
-  `{
+  ```{
     "mesaje": [
         {
             "data_creare": "202403290821",
@@ -100,7 +95,8 @@ f) The response is a json list in the following format:
     "serial": "2210701e50c923c412717453",
     "cui": "19507820,2760526082419",
     "titlu": "Lista Mesaje disponibile din ultimele 60 zile"
-  }`
+  }
+  ```
 
   - data_creare is of type date but it is in milliseconds since unix epoch time
   - from detalii the values of id_incarcare and cif_emitent must be taken out
@@ -115,7 +111,7 @@ i) Getting the response from the server must be separated from the display of th
 
 Please write the code for the above
 
-=================
+---
 
 Next steps are:
 1. Download the missing invoices and store the files locally in a directory read from the configuration file
@@ -124,7 +120,7 @@ Next steps are:
    2. use a different service to convert the XML to PDF which is to be stored in the same location
 
 1. Download the missing invoices and store the files locally in a directory read from the configuration file
-  a) The request to download files is https://api.anaf.ro/prod/ FCTEL/rest/descarcare?id={val1}
+  a) The request to download files is <https://api.anaf.ro/prod/FCTEL/rest/descarcare?id={val1}>
     where id is the same id from the previous point
   b) The received IDs should be checked against files downloded to the target directory and only invoices
   not already downloaded should be downloaded

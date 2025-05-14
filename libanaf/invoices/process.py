@@ -23,7 +23,7 @@ from rich.progress import (
 from libanaf.comms import make_auth_client
 from libanaf.config import Configuration
 
-from ..ubl.invoice import Invoice
+from ..ubl.ubl_document import parse_ubl_document
 
 config: dict[str, Any] = Configuration().load_config()
 logger: logging.Logger = logging.getLogger(__name__)
@@ -32,14 +32,15 @@ logger: logging.Logger = logging.getLogger(__name__)
 async def get_pdf_path(xml_path: Path) -> Path:
     outfname = xml_path.stem + ".pdf"
 
-    async with aiofiles.open(xml_path, "r", encoding="utf8") as xml_file:
+    async with aiofiles.open(xml_path, encoding="utf8") as xml_file:
         try:
             # logger.debug(f"Processing {xml_path}")
-            content = await xml_file.read()
-            invoice: Invoice = Invoice.from_xml(bytes(content, encoding="utf8"))
+            # content = await xml_file.read()
+            document = parse_ubl_document(xml_path)
+            # invoice: Invoice = Invoice.from_xml(bytes(content, encoding="utf8"))
 
-            if invoice is not None:
-                fname = invoice.tofname()
+            if document is not None:
+                fname = document.tofname()
                 outfname = xml_path.stem + "_" + fname + ".pdf"
 
             # if invoice.has_attachment():
@@ -90,9 +91,7 @@ async def convert_to_pdf(
             )  # use 30s timeout for slow moving requests
 
             if response.status_code != 200:
-                logger.error(
-                    f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
-                )
+                logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
                 return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
 
             content_type = response.headers["content-type"]
@@ -100,9 +99,7 @@ async def convert_to_pdf(
                 # we have a content_type which suggests the response is actually an error
                 try:
                     message = response.json()
-                    logger.error(
-                        f"Error received downloading: {url} - {message['eroare']}"
-                    )
+                    logger.error(f"Error received downloading: {url} - {message['eroare']}")
                     return message
                 except json.JSONDecodeError:
                     # this should not happen
@@ -124,9 +121,7 @@ async def convert_to_pdf(
     return f"SUCCESS: {xml}"
 
 
-async def process_invoices_async(
-    files_to_process: dict[Path, Path], semaphore: asyncio.Semaphore
-) -> None:
+async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: asyncio.Semaphore) -> None:
     console = Console()
 
     try:
@@ -141,9 +136,7 @@ async def process_invoices_async(
             TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
             transient=False,
         ) as progress:
-            overall_progress = progress.add_task(
-                "Overall progress", total=len(files_to_process)
-            )
+            overall_progress = progress.add_task("Overall progress", total=len(files_to_process))
             progress.start_task(overall_progress)
 
             tasks = [
@@ -204,17 +197,13 @@ def unzip_invoices(download_dir: Path) -> None:
                         # ignore XML signature file
                         continue
 
-                    new_dest = download_dir / (
-                        zip_file.stem + "_" + member_info.filename
-                    )
+                    new_dest = download_dir / (zip_file.stem + "_" + member_info.filename)
                     if not new_dest.exists():
                         typer.echo(
                             f"Extracting {member_info.filename} to {new_dest}",
                             color=True,
                         )
-                        extracted = Path(
-                            zip_handle.extract(member=member_info, path=download_dir)
-                        )
+                        extracted = Path(zip_handle.extract(member=member_info, path=download_dir))
                         extracted.rename(new_dest)
         except zipfile.BadZipFile as e:
             # the zip file is malformed
@@ -236,8 +225,6 @@ def process_invoices():
             files_to_process[xml_file] = pdf_file
 
     semaphore = asyncio.Semaphore(2)
-    asyncio.run(
-        process_invoices_async(files_to_process=files_to_process, semaphore=semaphore)
-    )
+    asyncio.run(process_invoices_async(files_to_process=files_to_process, semaphore=semaphore))
 
     # convert_invoices(download_dir=download_dir)

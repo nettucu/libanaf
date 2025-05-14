@@ -2,7 +2,7 @@ import logging
 import subprocess
 from datetime import date
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import typer
 from rich import box
@@ -11,7 +11,7 @@ from rich.table import Table
 from rich.pretty import pprint
 
 from libanaf.config import Configuration
-from libanaf.ubl.cac import Party
+from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
 from libanaf.ubl.ubl_document import parse_ubl_document
@@ -190,16 +190,20 @@ def display_documents(docs: list[Invoice | CreditNote]) -> None:
         elif isinstance(doc, CreditNote):
             line_items = doc.credit_note_line
             # quantity -> line.credited_quantity
+        else:
+            raise ValueError(f"Unknown document type: {doc}")
 
         for line in line_items:
             item_name = line.item.name
             # Depending on doc type, quantity field differs
             if isinstance(doc, Invoice):
+                line = cast(InvoiceLine, line)
                 quantity_str = str(line.invoiced_quantity)
             else:
+                line = cast(CreditNoteLine, line)
                 quantity_str = str(line.credited_quantity)
 
-            price_str = f"{line.price.price_amount:.2f}"
+            price_str = f"{line.price.price_amount:.2f}"  # pyright: ignore
 
             table.add_row(item_name, quantity_str, price_str)
 
@@ -208,7 +212,7 @@ def display_documents(docs: list[Invoice | CreditNote]) -> None:
 
 
 def get_supplier_str(party: Party) -> str:
-    formatted, name, cif, reg_com, address, city, county = party.get_display_str().values()  # ignore
+    formatted, *_ = party.get_display_str().values()
 
     return formatted
 
@@ -316,7 +320,7 @@ def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
             quantity_str = f"{quantity_value:.2f}"
 
             # price without VAT => line.price.price_amount, presumably
-            unit_price = line.price.price_amount  # This might be your "Pret fara TVA"
+            unit_price = line.price.price_amount  # This might be your "Pret fara TVA" # pyright: ignore
             price_str = f"{unit_price:.2f}"
 
             # Valoare (RON) => line.line_extension_amount? or quantity * unit_price
@@ -327,7 +331,14 @@ def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
             # Valoare TVA => in your sample, sometimes it's 0.00 or 19% of value
             # If you need the actual tax from the line, you might pull from line.classified_tax_category.percent
             # or from doc.tax_total, or any location you store the line's VAT. We'll default to 0.00 for now.
-            vat_value = 0.00  # or compute from your data
+            # vat_value = 0.00  # or compute from your data
+            vat_value = (
+                line.item.classified_tax_category.percent
+                if line.item.classified_tax_category is not None
+                and line.item.classified_tax_category.percent is not None
+                else 0.00
+            )
+            vat_value = value_no_vat * vat_value / 100
             vat_str = f"{vat_value:.2f}"
 
             table.add_row(str(line_number), item_name, unit_code, quantity_str, price_str, value_str, vat_str)

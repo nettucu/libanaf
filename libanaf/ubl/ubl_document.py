@@ -1,6 +1,7 @@
 import datetime
+import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TypeVar
 from lxml import etree  # pyright: ignore
 
 from pydantic_xml import BaseXmlModel, element, wrapped
@@ -18,12 +19,19 @@ from libanaf.ubl.cac import (
 from libanaf.ubl.ubl_types import NSMAP
 from libanaf.utils import sanitize_file_name
 
+UBLDocT = TypeVar("UBLDocT", bound="UBLDocument")
+
+logger = logging.getLogger(__name__)
+
 
 class UBLDocument(BaseXmlModel, tag="", search_mode="unordered", ns="", nsmap=NSMAP):
     """
-    Base class for UBL documents like Invoices or CreditNode
+    Base class for UBL documents like Invoices or Credit Notes.
 
-    TODO: Study more the pydantic_xml library to understand better how the parsing and generation takes place
+    Attributes:
+        id: The unique identifier of the document.
+        issue_date: The date the document was issued.
+        legal_monetary_total: The monetary total of the document.
     """
 
     ubl_version_id: Optional[str] = element(tag="UBLVersionID", default=None, ns="cbc")  # , nsmap=NSMAP)
@@ -50,29 +58,24 @@ class UBLDocument(BaseXmlModel, tag="", search_mode="unordered", ns="", nsmap=NS
     additional_document_reference: Optional[AdditionalDocumentReference] = None
     accounting_supplier_party: AccountingSupplierParty
     accounting_customer_party: AccountingCustomerParty
-    payment_means: Optional[list[PaymentMeans]]
+    payment_means: Optional[list[PaymentMeans]] = None
     tax_total: TaxTotal
     legal_monetary_total: LegalMonetaryTotal
 
     def tofname(self) -> str:
-        supplier_name: str | None = None
         supplier_party: Party = self.accounting_supplier_party.party
-        if supplier_party.party_name is not None and supplier_party.party_name.name is not None:
-            supplier_name = supplier_party.party_name.name
-        elif supplier_party.party_legal_entity is not None:
-            supplier_name = supplier_party.party_legal_entity.registration_name
+        supplier_name = (
+            supplier_party.party_name.name
+            if supplier_party.party_name and supplier_party.party_name.name
+            else supplier_party.party_legal_entity.registration_name
+        )
 
-        # supplier_name = supplier_name.replace('.', '')
-        # supplier_name = ''.join(letter for letter in supplier_name if (letter.isalnum() or letter.isspace()))
+        if not supplier_name:
+            raise ValueError(f"Supplier name is missing for document ID: {self.id}")
 
-        # supplier_name = supplier_name.strip()
-        no: str = self.id  # .strip() #.replace(' ', '-')
-        dt = str(self.issue_date)  # .strip()
-        amt: str = "{:.2f}".format(self.legal_monetary_total.payable_amount)
-
-        # return self._sanitize_file_name('_'.join([supplier_name, dt, no])) + '_' + amt
-        if supplier_name is None:
-            raise ValueError("Supplier name was not found")
+        no = self.id
+        dt = str(self.issue_date)
+        amt = f"{self.legal_monetary_total.payable_amount:.2f}"
 
         return sanitize_file_name(supplier_name, dt, no, glue="_") + "_" + amt
 
@@ -89,6 +92,7 @@ class UBLDocument(BaseXmlModel, tag="", search_mode="unordered", ns="", nsmap=NS
 
 
 def parse_ubl_document(xml_file: str | Path) -> UBLDocument:
+    logger.debug(f"Parsing UBL document: {xml_file}")
     if isinstance(xml_file, str):
         xml_file = Path(xml_file)
 
@@ -99,7 +103,10 @@ def parse_ubl_document(xml_file: str | Path) -> UBLDocument:
     local_name = etree.QName(root).localname
 
     if local_name != "Invoice" and local_name != "CreditNote":
-        raise ValueError(f"Cannot determine UBL document type from file {local_name} {xml_file}")
+        raise ValueError(
+            f"Unsupported UBL document type '{local_name}' in file {xml_file}. "
+            "Supported types are: 'Invoice', 'CreditNote'."
+        )
 
     ubl_document: UBLDocument
     if local_name == "Invoice":
@@ -113,4 +120,5 @@ def parse_ubl_document(xml_file: str | Path) -> UBLDocument:
         with xml_file.open("r", encoding="utf-8") as file:
             ubl_document = CreditNote.from_xml(bytes(file.read(), encoding="utf-8"))
 
+    logger.debug(f"Successfully parsed UBL document: {xml_file}")
     return ubl_document  # pyright: ignore
