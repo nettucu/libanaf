@@ -1,5 +1,5 @@
 import datetime
-from typing import List, Optional
+from typing import Optional
 
 from pydantic_xml import element
 
@@ -20,4 +20,4 @@ class Invoice(UBLDocument, tag="Invoice", search_mode="unordered", ns="", nsmap=
 
     due_date: Optional[datetime.date] = element(tag="DueDate", default=None, ns="cbc")  # , nsmap=NSMAP)
     invoice_type_code: Optional[str] = element(tag="InvoiceTypeCode", default=None, ns="cbc")  # , nsmap=NSMAP)
-    invoice_line: List[InvoiceLine]
+    invoice_line: list[InvoiceLine]

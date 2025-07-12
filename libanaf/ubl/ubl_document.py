@@ -24,7 +24,7 @@ UBLDocT = TypeVar("UBLDocT", bound="UBLDocument")
 logger = logging.getLogger(__name__)
 
 
-class UBLDocument(BaseXmlModel, tag="", search_mode="unordered", ns="", nsmap=NSMAP):
+class UBLDocument(BaseXmlModel):
     """
     Base class for UBL documents like Invoices or Credit Notes.
 

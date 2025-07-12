@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from pydantic_xml import element
 
@@ -15,4 +15,4 @@ class CreditNote(UBLDocument, tag="CreditNote", search_mode="unordered", ns="", 
     """
 
     credit_note_type_code: Optional[str] = element(tag="CreditNoteTypeCode", default=None, ns="cbc")
-    credit_note_line: List[CreditNoteLine]
+    credit_note_line: list[CreditNoteLine]
