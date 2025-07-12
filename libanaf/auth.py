@@ -31,9 +31,7 @@ class LibANAF_AuthServer:
         self.use_ssl = use_ssl
 
         if self.use_ssl and (cert_file is None or key_file is None):
-            raise RuntimeError(
-                "When SSL is enabled, certificate file and key file are mandatory"
-            )
+            raise RuntimeError("When SSL is enabled, certificate file and key file are mandatory")
 
         self.cert_file = cert_file
         self.key_file = key_file
@@ -53,9 +51,7 @@ class LibANAF_AuthServer:
             # we have received an error instead of an authorization code to get the token with
             if "error" in request.args:
                 logger.error(f"Error received: {request.args['error']}")
-                return Response(
-                    f"Error occured: {request.args['error']}", mimetype="text/plain"
-                )
+                return Response(f"Error occured: {request.args['error']}", mimetype="text/plain")
             elif "code" in request.args:
                 logger.debug(f"Auth code: {request.args['code']}")
                 return Response(
@@ -150,17 +146,13 @@ class LibANAF_AuthClient:
         cert_file = basedir / "secrets" / "cert.pem"
         key_file = basedir / "secrets" / "key.pem"
 
-        auth_server = LibANAF_AuthServer(
-            use_ssl=self.use_ssl, cert_file=cert_file, key_file=key_file
-        )
+        auth_server = LibANAF_AuthServer(use_ssl=self.use_ssl, cert_file=cert_file, key_file=key_file)
 
         # the return type is a MultiDict from werkzeug
         return auth_server.get_auth_response()
 
     def get_authorization_code(self):
-        authorization_url, state = self.oauth.create_authorization_url(
-            self.auth_url, token_content_type="jwt"
-        )
+        authorization_url, state = self.oauth.create_authorization_url(self.auth_url, token_content_type="jwt")
         self.oauth_state = state
         logger.debug(f"Authorization URL: {authorization_url}")
 
@@ -174,6 +166,8 @@ class LibANAF_AuthClient:
         return self.oauth
 
     def get_access_token(self):
+        import asyncio
+
         loop = True
 
         while loop:
@@ -192,11 +186,14 @@ class LibANAF_AuthClient:
         auth_code = auth_response["code"]
 
         logger.debug(f"Authorization code: {auth_code}")
-        token = self.oauth.fetch_token(
-            self.token_url,
-            code=auth_code,
-            client_secret=self.client_secret,
-            token_content_type="jwt",
+        loop = asyncio.get_event_loop()
+        token = loop.run_until_complete(
+            self.oauth.fetch_token(
+                self.token_url,
+                code=auth_code,
+                client_secret=self.client_secret,
+                token_content_type="jwt",
+            )
         )
         logger.debug(f"Access token received: {token}")
 
