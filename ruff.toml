@@ -1,0 +1,10 @@
+# Allow lines to be as long as 120.
+line-length = 120
+
+[format]
+quote-style = "double"
+indent-style = "space"
+
+[lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true

@@ -2,7 +2,8 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Optional
+from typing import Any, Optional
+from collections.abc import Awaitable, Callable
 
 from httpx import AsyncClient, HTTPStatusError, Response
 from rich.console import Console
@@ -111,7 +112,7 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
             #     progress.update(overall_progress, advance=1)
 
 
-def download(days: Optional[int] = 60, cif: Optional[int] = 19507820, filter: Optional[Filter] = Filter.P) -> None:
+def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P) -> None:
     """
     Download missing invoices and store them locally.
     """
@@ -122,9 +123,9 @@ def download(days: Optional[int] = 60, cif: Optional[int] = 19507820, filter: Op
     try:
         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
 
-        func: Callable[
-            [Optional[int], Optional[int], Optional[Filter]], Awaitable[dict[str, str | list[dict[str, str]]]]
-        ] = fetch_invoice_list
+        func: Callable[[int | None, int | None, Filter | None], Awaitable[dict[str, str | list[dict[str, str]]]]] = (
+            fetch_invoice_list
+        )
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
         # data = loop.run_until_complete(fetch_invoice_list(days, cif, filter))
         messages: str | list[dict[str, str]] = data.get("mesaje", [])

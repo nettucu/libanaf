@@ -141,6 +141,9 @@ class AccountingCustomerParty(SupplierPartyType, tag="AccountingCustomerParty", 
 class Price(BaseXmlModel, tag="Price", ns="cac", nsmap=NSMAP):
     price_amount: float = element(tag="PriceAmount", ns="cbc", nsmap=NSMAP)
     base_quantity: Optional[float] = element(tag="BaseQuantity", default=1.0, ns="cbc", nsmap=NSMAP)
+    base_quantity_unit_code: Optional[str] = element(
+        "BaseQuantity", ns="cbc", nsmap=NSMAP, default=None, attr="unitCode"
+    )
 
 
 class OrderLineReference(BaseXmlModel, tag="OrderLineReference", ns="cac", nsmap=NSMAP):
@@ -235,6 +238,9 @@ class InvoiceLine(BaseXmlModel, tag="InvoiceLine", search_mode="unordered", ns="
     id: str = element(tag="ID", ns="cbc", nsmap=NSMAP)
     note: Optional[List[str]] = element(tag="Note", default=None, ns="cbc", nsmap=NSMAP)
     invoiced_quantity: float = element(tag="InvoicedQuantity", ns="cbc", nsmap=NSMAP)
+    invoiced_quantity_unit_code: Optional[str] = wrapped(
+        "InvoicedQuantity", ns="cbc", nsmap=NSMAP, default=None, entity=attr("unitCode")
+    )
     line_extension_amount: float = element(tag="LineExtensionAmount", ns="cbc", nsmap=NSMAP)
     order_line_reference: Optional[OrderLineReference] = None
     item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP)
@@ -244,6 +250,9 @@ class InvoiceLine(BaseXmlModel, tag="InvoiceLine", search_mode="unordered", ns="
 class CreditNoteLine(BaseXmlModel, tag="CreditNoteLine", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
     id: str = element(tag="ID", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
     credited_quantity: float = element(tag="CreditedQuantity", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
+    credited_quantity_unit_code: Optional[str] = wrapped(
+        "CreditedQuantity", ns="cbc", nsmap=NSMAP, default=None, entity=attr("unitCode")
+    )
     line_extension_amount: float = element(tag="LineExtensionAmount", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
     item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
     price: Price = element(tag="Price", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
@@ -283,6 +292,7 @@ class AdditionalDocumentReference(BaseXmlModel, tag="AdditionalDocumentReference
 class OrderReference(BaseXmlModel, tag="OrderReference", ns="cac", nsmap=NSMAP):
     id: Optional[str] = element(tag="ID", default=None, ns="cbc", nsmap=NSMAP)
     sales_order_id: Optional[str] = element(tag="SalesOrderID", default=None, ns="cbc", nsmap=NSMAP)
+    issue_date: Optional[datetime.date] = element(tag="IssueDate", default=None, ns="cbc", nsmap=NSMAP)
 
 
 class FinancialInstitutionBranch(BaseXmlModel, tag="FinancialInstitutionBranch", ns="cac", nsmap=NSMAP):

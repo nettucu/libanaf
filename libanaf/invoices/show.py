@@ -21,10 +21,10 @@ console = Console()
 
 
 def show_invoices(
-    invoice_number: Optional[str],
-    supplier_name: Optional[str],
-    start_date: Optional[date],
-    end_date: Optional[date],
+    invoice_number: str | None,
+    supplier_name: str | None,
+    start_date: str | None,
+    end_date: str | None,
 ):
     """
     Show local invoices from 'dlds' folder that match the given filter parameters.
@@ -115,8 +115,8 @@ def gather_candidate_files(
 
 def parse_and_filter_documents(
     candidate_files: set[Path],
-    start_date: Optional[date],
-    end_date: Optional[date],
+    start_date: date | None,
+    end_date: date | None,
 ) -> list[Invoice | CreditNote]:  # or list of UBLDocument but we cast to Invoice below
     """
     Parses the candidate XML files and returns only those that are actual Invoices,
@@ -132,7 +132,7 @@ def parse_and_filter_documents(
             continue
 
         # Only keep if it's an Invoice
-        if not isinstance(doc, (Invoice, CreditNote)):
+        if not isinstance(doc, Invoice | CreditNote):
             continue
 
         # Filter by date range if both are given
@@ -303,9 +303,11 @@ def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
         if isinstance(doc, Invoice):
             lines = doc.invoice_line
             quantity_field = "invoiced_quantity"
+            quantity_unit_code_field = "invoiced_quantity_unit_code"
         else:  # CreditNote
             lines = doc.credit_note_line
             quantity_field = "credited_quantity"
+            quantity_unit_code_field = "credited_quantity_unit_code"
 
         line_number = 1
         for line in lines:
@@ -313,7 +315,7 @@ def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
             item_name = line.item.name
             # For the example PDF, they show "H87" for U.M. (unit measure).
             # Possibly line.item has that data or line.price/baseQuantity? We'll assume "H87" is in line.item?
-            unit_code = "H87"  # or from line.item or line.price?
+            unit_code = getattr(line, quantity_unit_code_field, "H87")  # or from line.item or line.price?
 
             # quantity
             quantity_value = getattr(line, quantity_field, 0)
