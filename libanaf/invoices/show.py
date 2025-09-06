@@ -1,8 +1,8 @@
 import logging
-import subprocess
 from datetime import date
 from pathlib import Path
 from typing import Optional, cast
+import re
 
 import typer
 from rich import box
@@ -42,7 +42,7 @@ def show_invoices(
     config = Configuration().load_config()
     dlds_dir = Path(config["storage"]["download_directory"])
 
-    # 2) Gather candidate files by grep (or fallback if only date range is used)
+    # 2) Gather candidate files using pure Python scan (or fallback if only date range is used)
     candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date, end_date)
     logger.debug(f"Found {len(candidate_files)}")
     logger.debug(candidate_files)
@@ -55,60 +55,58 @@ def show_invoices(
     display_documents_pdf_style(documents)
 
 
-def grep_files(dlds_dir: Path, pattern: str) -> set[Path]:
-    """
-    Runs a grep -l 'pattern' on all *.xml in the given directory.
-    Returns a set of matching filenames.
-    If grep finds no matches, an empty set is returned.
-    """
-    matched_files: set[Path] = set()
-    cmd = f'grep -l -i "{pattern}" {dlds_dir}/*.xml'
-    try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            shell=True,
-            check=False,  # don't raise CalledProcessError if no matches
-        )
-        # If grep finds no matches, stdout is empty
-        for line in result.stdout.splitlines():
-            line = line.strip()
-            if line:
-                matched_files.add(Path(line))
-    except Exception as e:
-        logger.debug(f"grep_files: ignoring error {e}")
+def _compile_search_patterns(invoice_number: str | None, supplier_name: str | None) -> list[re.Pattern[str]]:
+    """Compile case-insensitive regex patterns to match within XML tags.
 
-    return matched_files
+    - For invoice number, match inside <cbc:ID> ... </cbc:ID>
+    - For supplier name, match inside <cbc:Name> ... </cbc:Name>
+    """
+    patterns: list[re.Pattern[str]] = []
+    if invoice_number:
+        inv_esc = re.escape(invoice_number)
+        patterns.append(re.compile(rf"<cbc:ID>[^<]*{inv_esc}[^<]*</cbc:ID>", re.IGNORECASE))
+    if supplier_name:
+        sup_esc = re.escape(supplier_name)
+        patterns.append(re.compile(rf"<cbc:Name>[^<]*{sup_esc}[^<]*</cbc:Name>", re.IGNORECASE))
+    return patterns
 
 
 def gather_candidate_files(
     dlds_dir: Path,
-    invoice_number: Optional[str],
-    supplier_name: Optional[str],
-    start_date: Optional[date],
-    end_date: Optional[date],
+    invoice_number: str | None,
+    supplier_name: str | None,
+    start_date: str | None,
+    end_date: str | None,
 ) -> set[Path]:
     """
-    Uses grep to limit files by invoice_number and/or supplier_name if provided.
-    If only start/end date is provided, we fallback to all .xml files in dlds_dir.
+    Scan XML files in Python (no shell grep) to limit candidates by invoice_number and/or supplier_name.
+    If only start/end date is provided, fall back to all .xml files in dlds_dir.
+
+    Optimization: scan each file at most once and short-circuit on first match
+    (OR semantics between invoice_number and supplier_name, preserving prior behavior).
     """
+    # If only date range provided, we need to parse documents to filter by date
+    if (start_date and end_date) and not (invoice_number or supplier_name):
+        return set(dlds_dir.glob("*.xml"))
+
+    patterns = _compile_search_patterns(invoice_number, supplier_name)
+    if not patterns:
+        # No textual filters; return empty set so later logic can decide based on dates
+        return set()
+
     candidate_files: set[Path] = set()
+    for xml_path in dlds_dir.glob("*.xml"):
+        try:
+            # Read as text once; XML files are typically small. Use errors='ignore' for robustness.
+            text = xml_path.read_text(encoding="utf-8", errors="ignore")
+        except Exception as e:
+            logger.debug(f"Skipping {xml_path}: read error: {e}")
+            continue
 
-    # If invoice_number is given, grep for it
-    if invoice_number:
-        candidate_files |= grep_files(dlds_dir, f"<cbc:ID>.*{invoice_number}.*")
-
-    # If supplier_name is given, grep for it and union with existing
-    if supplier_name:
-        found = grep_files(dlds_dir, f"<cbc:Name>.*{supplier_name}*.")
-        # Union
-        candidate_files |= found
-
-    # If we have neither invoice_number nor supplier_name, but DO have date range
-    # then gather all .xml so we can parse them and check the date
-    if not candidate_files and (start_date and end_date) and not (invoice_number or supplier_name):
-        candidate_files = set(dlds_dir.glob("*.xml"))
+        for pat in patterns:
+            if pat.search(text):
+                candidate_files.add(xml_path)
+                break  # short-circuit on first match (OR semantics)
 
     return candidate_files
 

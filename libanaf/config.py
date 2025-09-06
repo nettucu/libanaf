@@ -1,7 +1,7 @@
 import json
 import logging
 import logging.config
-from typing import Any, Optional
+from typing import Any
 
 import envtoml
 from dotenv import load_dotenv, set_key
@@ -39,7 +39,7 @@ class Configuration:
         #    json.dump(tokens, f)
 
 
-def setup_logging(verbose: Optional[bool] = True) -> None:
+def setup_logging(verbose: bool | None = True) -> None:
     with open(LOGGING_CONFIG_PATH) as f:
         logging_config: dict[str, Any] = json.load(f)
 

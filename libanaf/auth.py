@@ -3,11 +3,10 @@ import threading
 import webbrowser
 from pathlib import Path
 from queue import Queue
-from typing import Any, Optional
+from typing import Any
 
 import jwt
 import typer
-from authlib.oauth2.rfc6749 import OAuth2Token
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
@@ -23,8 +22,8 @@ class LibANAF_AuthServer:
         host: str = "localhost",
         port: int = 8000,
         use_ssl: bool = True,
-        cert_file: Optional[str] = None,
-        key_file: Optional[str] = None,
+        cert_file: str | None = None,
+        key_file: str | None = None,
     ):
         self.host = host
         self.port = port

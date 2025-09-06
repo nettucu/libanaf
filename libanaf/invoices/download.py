@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from collections.abc import Awaitable, Callable
 
 from httpx import AsyncClient, HTTPStatusError, Response
