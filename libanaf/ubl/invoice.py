@@ -1,3 +1,6 @@
+# ruff: noqa: UP045, UP035, UP006
+# disabled some rules becasue of pydantic-xml usage
+
 import datetime
 from typing import Optional
 

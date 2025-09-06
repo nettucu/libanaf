@@ -1,7 +1,7 @@
 import logging
 from datetime import date
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 import re
 
 import typer
@@ -21,11 +21,8 @@ console = Console()
 
 
 def show_invoices(
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: str | None,
-    end_date: str | None,
-):
+    invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
+) -> None:
     """
     Show local invoices from 'dlds' folder that match the given filter parameters.
     """
@@ -68,15 +65,12 @@ def _compile_search_patterns(invoice_number: str | None, supplier_name: str | No
     if supplier_name:
         sup_esc = re.escape(supplier_name)
         patterns.append(re.compile(rf"<cbc:Name>[^<]*{sup_esc}[^<]*</cbc:Name>", re.IGNORECASE))
+
     return patterns
 
 
 def gather_candidate_files(
-    dlds_dir: Path,
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: str | None,
-    end_date: str | None,
+    dlds_dir: Path, invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
 ) -> set[Path]:
     """
     Scan XML files in Python (no shell grep) to limit candidates by invoice_number and/or supplier_name.

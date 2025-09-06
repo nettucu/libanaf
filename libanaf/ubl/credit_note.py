@@ -1,3 +1,6 @@
+# ruff: noqa: UP045, UP035, UP006
+# disabled some rules becasue of pydantic-xml usage
+
 from typing import Optional
 
 from pydantic_xml import element
