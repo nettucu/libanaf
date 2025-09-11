@@ -25,6 +25,18 @@ class LibANAF_AuthServer:
         cert_file: str | None = None,
         key_file: str | None = None,
     ):
+        """Initialize an auth callback server.
+
+        Args:
+            host: Hostname to bind to. Defaults to "localhost".
+            port: Port number to bind to. Defaults to 8000.
+            use_ssl: Whether to enable TLS/SSL. Defaults to True.
+            cert_file: Path to the TLS certificate file when `use_ssl` is True.
+            key_file: Path to the TLS private key file when `use_ssl` is True.
+
+        Raises:
+            RuntimeError: If `use_ssl` is True and either `cert_file` or `key_file` is not provided.
+        """
         self.host = host
         self.port = port
         self.use_ssl = use_ssl
@@ -38,6 +50,17 @@ class LibANAF_AuthServer:
     def get_auth_response(self):
         @Request.application
         def code_request(request: Request):
+            """Handle the redirect from ANAF with the authorization result.
+
+            Puts the query params from the redirect into a queue so the
+            server thread can shut down after a single request.
+
+            Args:
+                request: The Werkzeug `Request` for the incoming call.
+
+            Returns:
+                Response: A Werkzeug response describing success or error.
+            """
             logger.debug(request)
             logger.debug(f"request.headers = {request.headers}")
             logger.debug(f"request.args = {request.args}")
@@ -94,6 +117,18 @@ class LibANAF_AuthClient:
         access_token: str | Any = None,
         refresh_token: str | Any = None,
     ) -> None:
+        """Initialize the OAuth2 client wrapper.
+
+        Args:
+            client_id: OAuth2 client ID.
+            client_secret: OAuth2 client secret.
+            auth_url: Authorization endpoint URL.
+            token_url: Token endpoint URL.
+            redirect_uri: Redirect URI registered with the provider.
+            use_ssl: Whether to use TLS/SSL for the local callback server. Defaults to True.
+            access_token: Optional pre-existing access token (JWT string).
+            refresh_token: Optional pre-existing refresh token.
+        """
         self.client_id: str = client_id
         self.client_secret: str = client_secret
         self.auth_url: str = auth_url
@@ -108,7 +143,15 @@ class LibANAF_AuthClient:
     # Write a function to update the access token and refresh token when called from AsyncOAuth2Client
     # The function will be called when the token expired and it should be based on authlib Auto Update Token feature
     def update_token(self, token, refresh_token) -> None:
-        # TODO: do the update of the access token and refresh token
+        """Persist refreshed tokens and rebuild the client.
+
+        Authlib invokes this callback when the access token is refreshed.
+        Saves the new tokens to the config and updates internal state.
+
+        Args:
+            token: The new token payload as provided by Authlib.
+            refresh_token: The new refresh token value (may be present in `token`).
+        """
         logger.debug(token)
         logger.debug(refresh_token)
 
@@ -121,6 +164,11 @@ class LibANAF_AuthClient:
         self._make_client()
 
     def _make_client(self) -> None:
+        """Create or refresh the underlying `AsyncOAuth2Client` instance.
+
+        If an `access_token` is available, initialize the Authlib client with a
+        decoded token payload to set `token_type`, expiration, and refresh token.
+        """
         self.oauth: AsyncOAuth2Client = AsyncOAuth2Client(
             client_id=self.client_id,
             client_secret=self.client_secret,
@@ -141,6 +189,12 @@ class LibANAF_AuthClient:
 
     def start_local_server(self):
         # TODO: the certificate and keyfile should not be hardcoded here
+        """Start a one-shot local callback server for the authorization flow.
+
+        Returns:
+            werkzeug.datastructures.MultiDict: Query params from the redirect
+            request, typically containing either `code` on success or `error`.
+        """
         basedir = Path(__file__).parent.parent
         cert_file = basedir / "secrets" / "cert.pem"
         key_file = basedir / "secrets" / "key.pem"
@@ -151,6 +205,15 @@ class LibANAF_AuthClient:
         return auth_server.get_auth_response()
 
     def get_authorization_code(self):
+        """Obtain an authorization code via browser-based consent flow.
+
+        Opens the user's browser to the provider's authorization URL,
+        starts a local callback server, and waits for the redirect.
+
+        Returns:
+            werkzeug.datastructures.MultiDict: Redirect query params containing
+            either `code` and `state` on success or `error` on failure.
+        """
         authorization_url, state = self.oauth.create_authorization_url(self.auth_url, token_content_type="jwt")
         self.oauth_state = state
         logger.debug(f"Authorization URL: {authorization_url}")
@@ -162,9 +225,22 @@ class LibANAF_AuthClient:
         return auth_code
 
     def get_client(self) -> AsyncOAuth2Client:
+        """Return the configured Authlib OAuth2 client.
+
+        Returns:
+            AsyncOAuth2Client: The underlying OAuth2 client instance.
+        """
         return self.oauth
 
     def get_access_token(self):
+        """Run the consent flow and exchange the code for a token.
+
+        Handles retry on user-declined consent, then exchanges the received
+        authorization code for an access token.
+
+        Returns:
+            dict: The token payload returned by the token endpoint.
+        """
         import asyncio
 
         loop = True
