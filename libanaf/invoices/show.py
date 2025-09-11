@@ -1,3 +1,10 @@
+"""Render and filter local UBL invoices/credit notes.
+
+Provides helpers to list and display UBL `Invoice`/`CreditNote` documents
+stored on disk, filter them by supplier, number and date range, and print
+human-readable tables using Rich.
+"""
+
 import logging
 from datetime import date
 from pathlib import Path
@@ -23,8 +30,16 @@ console = Console()
 def show_invoices(
     invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
 ) -> None:
-    """
-    Show local invoices from 'dlds' folder that match the given filter parameters.
+    """Show invoices from local storage filtered by criteria.
+
+    Args:
+        invoice_number: Partial or full invoice number to search in XML `<cbc:ID>`.
+        supplier_name: Partial or full supplier name to search in XML `<cbc:Name>`.
+        start_date: Inclusive start date (YYYY-MM-DD) when combined with `end_date`.
+        end_date: Inclusive end date (YYYY-MM-DD) when combined with `start_date`.
+
+    Raises:
+        typer.Exit: If no filters are provided.
     """
     logger.debug(
         f"show_invoices: invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
@@ -53,10 +68,17 @@ def show_invoices(
 
 
 def _compile_search_patterns(invoice_number: str | None, supplier_name: str | None) -> list[re.Pattern[str]]:
-    """Compile case-insensitive regex patterns to match within XML tags.
+    """Compile case-insensitive regex patterns for XML content search.
 
-    - For invoice number, match inside <cbc:ID> ... </cbc:ID>
-    - For supplier name, match inside <cbc:Name> ... </cbc:Name>
+    - For invoice number, matches inside `<cbc:ID> ... </cbc:ID>`.
+    - For supplier name, matches inside `<cbc:Name> ... </cbc:Name>`.
+
+    Args:
+        invoice_number: Invoice number fragment to search.
+        supplier_name: Supplier name fragment to search.
+
+    Returns:
+        list[re.Pattern[str]]: Compiled regex patterns to test XML text.
     """
     patterns: list[re.Pattern[str]] = []
     if invoice_number:
@@ -72,12 +94,20 @@ def _compile_search_patterns(invoice_number: str | None, supplier_name: str | No
 def gather_candidate_files(
     dlds_dir: Path, invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
 ) -> set[Path]:
-    """
-    Scan XML files in Python (no shell grep) to limit candidates by invoice_number and/or supplier_name.
-    If only start/end date is provided, fall back to all .xml files in dlds_dir.
+    """Collect XML files that match text filters before parsing.
 
-    Optimization: scan each file at most once and short-circuit on first match
-    (OR semantics between invoice_number and supplier_name, preserving prior behavior).
+    If only date range is provided, returns all `.xml` files from `dlds_dir`
+    to let downstream logic filter by dates.
+
+    Args:
+        dlds_dir: Directory containing downloaded XML documents.
+        invoice_number: Invoice number fragment to search in `<cbc:ID>`.
+        supplier_name: Supplier name fragment to search in `<cbc:Name>`.
+        start_date: Inclusive start date (YYYY-MM-DD) if paired with `end_date`.
+        end_date: Inclusive end date (YYYY-MM-DD) if paired with `start_date`.
+
+    Returns:
+        set[Path]: Candidate XML file paths matching text filters.
     """
     # If only date range provided, we need to parse documents to filter by date
     if (start_date and end_date) and not (invoice_number or supplier_name):
@@ -110,9 +140,15 @@ def parse_and_filter_documents(
     start_date: date | None,
     end_date: date | None,
 ) -> list[Invoice | CreditNote]:  # or list of UBLDocument but we cast to Invoice below
-    """
-    Parses the candidate XML files and returns only those that are actual Invoices,
-    optionally filtering by date range.
+    """Parse candidate files and filter documents by date.
+
+    Args:
+        candidate_files: Set of XML paths to parse as UBL Invoice/CreditNote.
+        start_date: Keep docs with `issue_date >= start_date` when provided.
+        end_date: Keep docs with `issue_date <= end_date` when provided.
+
+    Returns:
+        list[Invoice | CreditNote]: Parsed and filtered documents.
     """
 
     results: list[Invoice | CreditNote] = []
@@ -139,13 +175,13 @@ def parse_and_filter_documents(
 
 
 def display_documents(docs: list[Invoice | CreditNote]) -> None:
-    """
-    Displays a Rich table with:
-        - DocType (Invoice or CreditNote)
-        - Supplier Name
-        - Issue Date
-        - Payable Amount
-        - Then lines (InvoiceLine or CreditNoteLine)
+    """Render a simple Rich table for each document.
+
+    Shows supplier name, document ID/date, and line items with quantity and
+    price. Intended as a compact, console-friendly view.
+
+    Args:
+        docs: Parsed `Invoice` or `CreditNote` instances to display.
     """
     if not docs:
         console.print("[bold red]No matching invoices/credit notes found.[/bold red]")
@@ -204,12 +240,28 @@ def display_documents(docs: list[Invoice | CreditNote]) -> None:
 
 
 def get_supplier_str(party: Party) -> str:
+    """Format party information for display.
+
+    Args:
+        party: The `Party` object to format.
+
+    Returns:
+        str: A single, formatted string suitable for headers.
+    """
     formatted, *_ = party.get_display_str().values()
 
     return formatted
 
 
 def display_header(doc: Invoice | CreditNote) -> None:
+    """Print a header section for a document using Rich.
+
+    Includes supplier/customer information, document ID/date and due date
+    along with payment means, mimicking a PDF-style header.
+
+    Args:
+        doc: The `Invoice` or `CreditNote` to describe.
+    """
     # 1) Gather or compute top-level info
     # doc_type = doc.__class__.__name__  # "Invoice" or "CreditNote"
     doc_id: str = doc.id
@@ -257,9 +309,13 @@ def display_header(doc: Invoice | CreditNote) -> None:
 
 
 def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
-    """
-    Print each Invoice or CreditNote as a separate Rich table,
-    following the multi-line header format shown in the sample PDF.
+    """Render each document as a PDF-like multi-section table.
+
+    Produces a header and a detailed line-item table similar to an invoice
+    PDF, including quantities, unit prices, values and VAT calculation.
+
+    Args:
+        docs: Parsed `Invoice` or `CreditNote` instances to display.
     """
     if not docs:
         console.print("[bold red]No matching documents found.[/bold red]")
