@@ -5,7 +5,7 @@ from typing import Annotated
 
 from .auth import LibANAF_AuthClient
 from .comms import make_auth_client
-from .config import setup_logging
+from .config import Configuration
 from .invoices.app import app as invoices_app
 
 app = typer.Typer()
@@ -20,7 +20,8 @@ def main(
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Enable verbose output")] = False,
 ) -> None:
     typer.echo("Starting the application ...")
-    setup_logging(verbose)
+    config = Configuration().setup()
+    config.setup_logging(verbose)
     if verbose:
         logger.debug("Verbose mode enabled")
 

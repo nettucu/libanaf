@@ -1,7 +1,7 @@
 import logging
 from asyncio import AbstractEventLoop
 from datetime import datetime
-from typing import Awaitable, Callable, Optional
+from collections.abc import Awaitable, Callable
 
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from httpx import HTTPStatusError, Response
@@ -31,14 +31,12 @@ logger = logging.getLogger(__name__)
 #     },
 ##
 async def fetch_invoice_list(
-    days: Optional[int] = 60,
-    cif: Optional[int] = 19507820,
-    filter: Optional[Filter] = Filter.P,
+    days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P
 ) -> dict[str, str | list[dict[str, str]]]:
-    config = Configuration().load_config()
+    config = Configuration().setup().get_config()
     # access_token = config["connection"]["access_token"]
     # "https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura"
-    base_url: str = config["efactura"]["message_list_url"]
+    base_url: str = config["efactura"]["LIBANAF_MESSAGE_LIST_URL"]
 
     params: dict[str, str] = {"zile": str(days), "cif": str(cif)}
     if filter:
@@ -67,17 +65,13 @@ async def fetch_invoice_list(
     return response_data
 
 
-def list_invoices(
-    days: Optional[int] = 60,
-    cif: Optional[int] = 19507820,
-    filter: Optional[Filter] = Filter.P,
-) -> None:
+def list_invoices(days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P) -> None:
     try:
         import asyncio
 
         loop: AbstractEventLoop = asyncio.get_event_loop()
         func: Callable[
-            [Optional[int], Optional[int], Optional[Filter]],
+            [int | None, int | None, Filter | None],
             Awaitable[dict[str, str | list[dict[str, str]]]],
         ] = fetch_invoice_list
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))

@@ -20,6 +20,7 @@ from libanaf.ubl.cac import (
     AccountingCustomerParty,
     AccountingSupplierParty,
     AdditionalDocumentReference,
+    AllowanceCharge,
     LegalMonetaryTotal,
     OrderReference,
     Party,
@@ -69,6 +70,9 @@ class UBLDocument(BaseXmlModel):
         entity=element(tag="ID", default=None, ns="cbc"),
     )
     additional_document_reference: Optional[AdditionalDocumentReference] = None
+    allowance_charge: Optional[list[AllowanceCharge]] = element(
+        tag="AllowanceCharge", default=None, ns="cac", nsmap=NSMAP
+    )
     accounting_supplier_party: AccountingSupplierParty
     accounting_customer_party: AccountingCustomerParty
     payment_means: Optional[list[PaymentMeans]] = None

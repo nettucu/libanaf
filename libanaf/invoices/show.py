@@ -13,9 +13,12 @@ import re
 
 import typer
 from rich import box
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
-from rich.pretty import pprint
+from rich.columns import Columns
+from rich.panel import Panel
+from rich.text import Text
+from rich.align import Align
 
 from libanaf.config import Configuration
 from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
@@ -51,8 +54,8 @@ def show_invoices(
         )
         raise typer.Exit(code=1)
 
-    config = Configuration().load_config()
-    dlds_dir = Path(config["storage"]["download_directory"])
+    config = Configuration().setup().get_config()
+    dlds_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
 
     # 2) Gather candidate files using pure Python scan (or fallback if only date range is used)
     candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date, end_date)
@@ -289,7 +292,6 @@ def display_header(doc: Invoice | CreditNote) -> None:
         title=f"FACTURA {doc_id} din {doc_date.strftime('%d/%m/%Y')} [right] Termen de plata: {due_date_str}[/right]",
         show_header=True,
         expand=True,
-        width=200,
         header_style="bold white on navy_blue",
     )
     header_table.add_column("[bold]FURNIZOR[/bold]", justify="left")
@@ -308,6 +310,325 @@ def display_header(doc: Invoice | CreditNote) -> None:
     console.print(header_table)
 
 
+# ------------------------------
+# Formatting helpers and renderer
+# ------------------------------
+
+
+def _format_money(value: float | None, currency: str | None) -> str:
+    """Format money using English number formatting (1,234.56)."""
+    if value is None:
+        return ""
+    cur = currency or "RON"
+    return f"{value:,.2f} {cur}"
+
+
+def _format_qty(value: float | int | None) -> str:
+    if value is None:
+        return ""
+    return f"{float(value):,.2f}"
+
+
+def _format_percent(value: float | None) -> str:
+    if value is None:
+        return "0%"
+    return f"{value:.0f}%"
+
+
+class InvoiceRenderer:
+    """Render Invoice/CreditNote to a PDF-like Rich layout.
+
+    - Uses Romanian labels
+    - English numeric formatting (1,234.56)
+    - CreditNotes are shown with negative values
+    - Shows VAT per line, VAT summary by rate, totals and payment info
+    - Shows document-level discounts/charges if present in LegalMonetaryTotal
+    """
+
+    def __init__(self, console: Console) -> None:
+        self.console = console
+
+    # ---------- high level ----------
+    def render(self, doc: Invoice | CreditNote) -> None:
+        title = self._build_title(doc)
+        header_row = self._build_header_row(doc)
+        lines_table = self._build_lines_table(doc)
+        vat_summary = self._build_vat_summary(doc)
+        totals = self._build_totals_panel(doc)
+        footer = self._build_footer(doc)
+
+        self.console.print(title)
+        self.console.print(header_row)
+        self.console.print(lines_table)
+        if vat_summary is not None:
+            self.console.print(Align.right(vat_summary))
+        self.console.print(Align.right(totals))
+        if footer is not None:
+            self.console.print(footer)
+
+    # ---------- builders ----------
+    def _build_title(self, doc: Invoice | CreditNote) -> Panel:
+        is_credit = isinstance(doc, CreditNote)
+        doc_type = "NOTA DE CREDIT" if is_credit else "FACTURA"
+        right = Text()
+        if doc.due_date:
+            right.append(f"Termen de plata: {doc.due_date.strftime('%d/%m/%Y')}")
+        currency = getattr(doc, "document_currency_code", None) or "RON"
+        left = Text(f"{doc_type} {doc.id} din {doc.issue_date.strftime('%d/%m/%Y')}  [ {currency} ]", style="bold")
+        content = Columns([left, Text(""), right], equal=False, expand=True)
+        return Panel(content, title=doc_type, title_align="left", padding=(1, 2))
+
+    def _build_header_row(self, doc: Invoice | CreditNote) -> Columns:
+        """Build the top row with Furnizor (including PLATA underneath), Invoice details, and Client."""
+        supplier_panel = self._build_supplier_panel(doc)
+        details_panel = self._build_invoice_details_panel(doc)
+        client_panel = self._party_panel(doc.accounting_customer_party.party, title="CLIENT")
+        return Columns([supplier_panel, details_panel, client_panel], expand=True, equal=True)
+
+    def _build_supplier_panel(self, doc: Invoice | CreditNote) -> Panel:
+        supplier_text = Text(doc.accounting_supplier_party.party.get_display_str()["formatted"])  # name, cif, address
+
+        # PLATA under Furnizor
+        payments_group = None
+        if doc.payment_means:
+            payments_text = Text()
+            for pm in doc.payment_means:
+                pm_str = pm.get_display_str()["formatted"]
+                if pm_str and pm_str != "N/A":
+                    payments_text.append(pm_str + "\n")
+            if str(payments_text).strip():
+                payments_group = Panel(payments_text, title="PLATA", padding=(0, 1))
+
+        content = Group(supplier_text, payments_group) if payments_group else Group(supplier_text)
+        return Panel(content, title="FURNIZOR", padding=(0, 1))
+
+    def _build_invoice_details_panel(self, doc: Invoice | CreditNote) -> Panel:
+        """Build the central panel with invoice metadata: number, dates, order ref."""
+        t = Table(box=box.SIMPLE, show_header=False, expand=True, padding=(0, 0))
+        t.add_column("", style="bold")
+        t.add_column("")
+        t.add_row("Nr. factura", str(doc.id))
+        t.add_row("Data emiterii", doc.issue_date.strftime("%d/%m/%Y"))
+        t.add_row("Scadenta", doc.due_date.strftime("%d/%m/%Y") if doc.due_date else "-")
+        if doc.order_reference and doc.order_reference.id:
+            t.add_row("Nr. comanda", str(doc.order_reference.id))
+        return Panel(t, title="DETALII FACTURA", padding=(0, 1))
+
+    def _party_panel(self, party: Party, title: str) -> Panel:
+        text = party.get_display_str()["formatted"]
+        return Panel(Text(text), title=title, padding=(0, 1))
+
+    # Detalii Document section removed per request
+    def _build_doc_meta(self, doc: Invoice | CreditNote) -> Panel | None:  # noqa: D401
+        return None
+
+    def _build_lines_table(self, doc: Invoice | CreditNote) -> Table:
+        currency = getattr(doc, "document_currency_code", None) or "RON"
+        is_credit = isinstance(doc, CreditNote)
+
+        table = Table(
+            title="",
+            box=box.HEAVY_HEAD,
+            show_header=True,
+            header_style="bold white",
+            expand=True,
+            show_lines=False,
+        )
+
+        table.add_column("#", justify="right", style="bold", no_wrap=True)
+        table.add_column("Denumire", style="cyan")
+        table.add_column("U.M.", justify="center", no_wrap=True)
+        table.add_column("Cant.", justify="right", no_wrap=True)
+        table.add_column("Pret unitar (fara TVA)", justify="right", no_wrap=True)
+        table.add_column("Valoare (fara TVA)", justify="right", no_wrap=True)
+        table.add_column("Reducere", justify="right", no_wrap=True)
+        table.add_column("Valoare TVA", justify="right", no_wrap=True)
+
+        if isinstance(doc, Invoice):
+            lines = doc.invoice_line
+            qty_field = "invoiced_quantity"
+            unit_field = "invoiced_quantity_unit_code"
+        else:
+            lines = doc.credit_note_line
+            qty_field = "credited_quantity"
+            unit_field = "credited_quantity_unit_code"
+
+        for idx, line in enumerate(lines, start=1):
+            name = line.item.name
+            unit_code = (
+                getattr(line, unit_field, None) or (line.price.base_quantity_unit_code if line.price else None) or "H87"
+            )
+
+            qty = getattr(line, qty_field, 0.0) or 0.0
+            unit_price = (line.price.price_amount if line.price else None) or 0.0
+            base_value = line.line_extension_amount or 0.0
+
+            # Prefer explicit line AllowanceCharge discounts if present; fallback to implied
+            discount_value = 0.0
+            try:
+                if getattr(line, "allowance_charge", None):
+                    for ac in line.allowance_charge:  # type: ignore[attr-defined]
+                        if ac and ac.charge_indicator is False and ac.amount is not None:
+                            discount_value += float(ac.amount)
+            except Exception:
+                discount_value = 0.0
+
+            if discount_value == 0.0:
+                implied_discount = (qty * unit_price) - base_value
+                if abs(implied_discount) >= 0.005:
+                    discount_value = implied_discount
+
+            # VAT percent and value
+            percent = (
+                line.item.classified_tax_category.percent
+                if line.item.classified_tax_category and line.item.classified_tax_category.percent is not None
+                else 0.0
+            )
+            vat_value = base_value * (percent / 100.0)
+
+            # Credit notes shown as negatives
+            sign = -1.0 if is_credit else 1.0
+            qty *= sign
+            unit_price *= sign
+            base_value *= sign
+            vat_value *= sign
+            discount_value *= sign
+
+            table.add_row(
+                str(idx),
+                name,
+                str(unit_code),
+                _format_qty(qty),
+                _format_money(unit_price, currency),
+                _format_money(base_value, currency),
+                _format_money(discount_value if discount_value != 0 else 0.0, currency),
+                _format_money(vat_value, currency),
+            )
+
+        return table
+
+    def _build_vat_summary(self, doc: Invoice | CreditNote) -> Panel | None:
+        if isinstance(doc, Invoice):
+            lines = doc.invoice_line
+        else:
+            lines = doc.credit_note_line
+
+        # Group by percent
+        groups: dict[float, dict[str, float]] = {}
+        for line in lines:
+            percent = (
+                line.item.classified_tax_category.percent
+                if line.item.classified_tax_category and line.item.classified_tax_category.percent is not None
+                else 0.0
+            )
+            base = line.line_extension_amount or 0.0
+            vat = base * (percent / 100.0)
+            d = groups.setdefault(percent, {"base": 0.0, "vat": 0.0})
+            d["base"] += base
+            d["vat"] += vat
+
+        if not groups:
+            return None
+
+        currency = getattr(doc, "document_currency_code", None) or "RON"
+        is_credit = isinstance(doc, CreditNote)
+        sign = -1.0 if is_credit else 1.0
+
+        t = Table(box=box.SIMPLE_HEAVY, show_header=True, header_style="bold", expand=False)
+        t.add_column("Cota TVA", justify="right")
+        t.add_column("Baza", justify="right")
+        t.add_column("TVA", justify="right")
+
+        total_base = 0.0
+        total_vat = 0.0
+        for p in sorted(groups.keys()):
+            base = groups[p]["base"] * sign
+            vat = groups[p]["vat"] * sign
+            total_base += base
+            total_vat += vat
+            t.add_row(_format_percent(p), _format_money(base, currency), _format_money(vat, currency))
+
+        t.add_row("", "", "")
+        t.add_row("Total", _format_money(total_base, currency), _format_money(total_vat, currency))
+        return Panel(t, title="Rezumat TVA", padding=(0, 1))
+
+    def _build_totals_panel(self, doc: Invoice | CreditNote) -> Panel:
+        cur = getattr(doc, "document_currency_code", None) or "RON"
+        is_credit = isinstance(doc, CreditNote)
+        sign = -1.0 if is_credit else 1.0
+
+        lmt = doc.legal_monetary_total
+        tax_total = getattr(doc, "tax_total", None)
+        tax_amount = tax_total.tax_amount if tax_total else None
+
+        rows: list[tuple[str, float | None]] = []
+        rows.append(("Total fara TVA", (lmt.tax_exclusive_amount or 0.0) * sign))
+        if tax_amount is not None:
+            rows.append(("Total TVA", (tax_amount or 0.0) * sign))
+        if lmt.tax_inclusive_amount and abs(lmt.tax_inclusive_amount) > 0.0:
+            rows.append(("Total cu TVA", (lmt.tax_inclusive_amount or 0.0) * sign))
+        # Prefer explicit document-level AllowanceCharge list if present
+        doc_discount = None
+        doc_charge = None
+        try:
+            if getattr(doc, "allowance_charge", None):
+                dsum = 0.0
+                csum = 0.0
+                for ac in doc.allowance_charge:  # type: ignore[attr-defined]
+                    if not ac or ac.amount is None:
+                        continue
+                    if ac.charge_indicator is False:
+                        dsum += float(ac.amount)
+                    else:
+                        csum += float(ac.amount)
+                doc_discount = dsum if dsum != 0.0 else None
+                doc_charge = csum if csum != 0.0 else None
+        except Exception:
+            doc_discount = None
+            doc_charge = None
+
+        if doc_discount is not None:
+            rows.append(("Reduceri (document)", (doc_discount or 0.0) * sign * -1))
+        elif lmt.allowance_total_amount and abs(lmt.allowance_total_amount) > 0.0001:
+            rows.append(("Reduceri (document)", (lmt.allowance_total_amount or 0.0) * sign * -1))
+
+        if doc_charge is not None:
+            rows.append(("Majorari (document)", (doc_charge or 0.0) * sign))
+        elif lmt.charge_total_amount and abs(lmt.charge_total_amount) > 0.0001:
+            rows.append(("Majorari (document)", (lmt.charge_total_amount or 0.0) * sign))
+        if lmt.prepaid_amount and abs(lmt.prepaid_amount) > 0.0001:
+            rows.append(("Avansuri", (lmt.prepaid_amount or 0.0) * sign * -1))
+        if lmt.payable_rounding_amount and abs(lmt.payable_rounding_amount) > 0.0001:
+            rows.append(("Rotunjire", (lmt.payable_rounding_amount or 0.0) * sign))
+
+        rows.append(("Total de plata", (lmt.payable_amount or 0.0) * sign))
+
+        t = Table(box=box.SIMPLE_HEAVY, show_header=False, expand=False)
+        t.add_column("", justify="left", style="bold")
+        t.add_column("", justify="right")
+        for label, value in rows:
+            if label == "Total de plata":
+                t.add_row(Text(label, style="bold white on dark_green"), Text(_format_money(value, cur), style="bold"))
+            else:
+                t.add_row(label, _format_money(value, cur))
+
+        return Panel(t, title="Totaluri", padding=(0, 1))
+
+    def _build_footer(self, doc: Invoice | CreditNote) -> Panel | None:
+        """Show Note only if there are additional notes; ignore attachments here."""
+        items: list[str] = []
+        if doc.note:
+            for n in doc.note:
+                if n and str(n).strip():
+                    items.append(n)
+
+        if not items:
+            return None
+
+        txt = Text("\n".join(items))
+        return Panel(txt, title="Note", padding=(0, 1))
+
+
 def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
     """Render each document as a PDF-like multi-section table.
 
@@ -321,84 +642,6 @@ def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
         console.print("[bold red]No matching documents found.[/bold red]")
         return
 
+    renderer = InvoiceRenderer(console)
     for doc in docs:
-        pprint(doc)
-
-        display_header(doc)
-
-        # 3) Create the table
-        #    We'll define columns matching your PDF sample:
-        #    # | Denumire | U.M. | Cant. | Pret fara TVA RON | Valoare RON | Valoare TVA RON
-        table = Table(
-            title="",
-            box=box.HEAVY_HEAD,
-            show_header=True,
-            header_style="bold white",
-            expand=False,
-            show_lines=True,
-            width=200,
-        )
-
-        table.add_column("#", justify="right", style="bold")
-        table.add_column("Denumire", style="cyan", no_wrap=False)
-        table.add_column("U.M.", justify="center")
-        table.add_column("Cant.", justify="right")
-        table.add_column("Pret fara TVA\n(RON)", justify="right")
-        table.add_column("Valoare\n(RON)", justify="right")
-        table.add_column("Valoare TVA\n(RON)", justify="right")
-
-        # 4) Iterate line items
-        if isinstance(doc, Invoice):
-            lines = doc.invoice_line
-            quantity_field = "invoiced_quantity"
-            quantity_unit_code_field = "invoiced_quantity_unit_code"
-        else:  # CreditNote
-            lines = doc.credit_note_line
-            quantity_field = "credited_quantity"
-            quantity_unit_code_field = "credited_quantity_unit_code"
-
-        line_number = 1
-        for line in lines:
-            # item name
-            item_name = line.item.name
-            # For the example PDF, they show "H87" for U.M. (unit measure).
-            # Possibly line.item has that data or line.price/baseQuantity? We'll assume "H87" is in line.item?
-            unit_code = getattr(line, quantity_unit_code_field, "H87")  # or from line.item or line.price?
-
-            # quantity
-            quantity_value = getattr(line, quantity_field, 0)
-            quantity_str = f"{quantity_value:.2f}"
-
-            # price without VAT => line.price.price_amount, presumably
-            unit_price = line.price.price_amount  # This might be your "Pret fara TVA" # pyright: ignore
-            price_str = f"{unit_price:.2f}"
-
-            # Valoare (RON) => line.line_extension_amount? or quantity * unit_price
-            # Typically UBL has line_extension_amount, so let's assume:
-            value_no_vat = line.line_extension_amount
-            value_str = f"{value_no_vat:.2f}"
-
-            # Valoare TVA => in your sample, sometimes it's 0.00 or 19% of value
-            # If you need the actual tax from the line, you might pull from line.classified_tax_category.percent
-            # or from doc.tax_total, or any location you store the line's VAT. We'll default to 0.00 for now.
-            # vat_value = 0.00  # or compute from your data
-            vat_value = (
-                line.item.classified_tax_category.percent
-                if line.item.classified_tax_category is not None
-                and line.item.classified_tax_category.percent is not None
-                else 0.00
-            )
-            vat_value = value_no_vat * vat_value / 100
-            vat_str = f"{vat_value:.2f}"
-
-            table.add_row(str(line_number), item_name, unit_code, quantity_str, price_str, value_str, vat_str)
-            line_number += 1
-
-        # 5) Show a final "Total invoice" row or not
-        #    The sample PDF shows something like "Total 28,571.97" at the bottom.
-        #    We'll add a row with blank cells, except the last one with total.
-        doc_total = doc.legal_monetary_total.payable_amount
-        table.add_row("", "", "", "", "Total", f"{doc_total:.2f}", "")
-
-        # 6) Print the table for this doc
-        console.print(table)
+        renderer.render(doc)

@@ -24,7 +24,6 @@ from ._utils import is_invoice_downloaded
 from .list import fetch_invoice_list
 
 logger: logging.Logger = logging.getLogger(__name__)
-config: dict[str, Any] = Configuration().load_config()
 
 #  165   0000: HTTP/1.1 200
 #  167   0000: Date: Thu, 13 Jun 2024 16:44:19 GMT
@@ -41,13 +40,36 @@ config: dict[str, Any] = Configuration().load_config()
 async def download_invoice(
     client: AsyncClient, invoice_id: str, download_dir: Path, progress: Progress, task_id, semaphore: asyncio.Semaphore
 ):
+    """Download a single invoice archive by ID.
+
+    Issues a GET request to the ANAF download endpoint for the given
+    `invoice_id`, writing the resulting ZIP content to `download_dir`.
+    If the response indicates an error (JSON or text payload), the parsed
+    message is returned instead of a file path. Concurrency is throttled
+    via the provided ``semaphore``.
+
+    Args:
+        client: Initialized `httpx.AsyncClient` (OAuth2-enabled) to make requests.
+        invoice_id: The invoice/message identifier to download.
+        download_dir: Directory where the downloaded ZIP file is saved.
+        progress: Rich `Progress` instance used to update overall progress.
+        task_id: Progress task identifier to advance on successful download.
+        semaphore: Semaphore limiting the number of concurrent downloads.
+
+    Returns:
+        Path | dict | str: The path to the saved ZIP on success; otherwise a
+        parsed error payload (dict) or a short error description (str).
+
+    Raises:
+        OSError: If writing the downloaded file to disk fails.
+        httpx.RequestError: On underlying transport errors while performing the request.
     """
-    Download an invoice by ID and save it to the download directory.
-    """
+    config: dict[str, Any] = Configuration().setup().get_config()
+
     async with semaphore:
         await asyncio.sleep(0.1)  # Add a delay of ~1 second before starting the download
         #  https://api.anaf.ro/prod/FCTEL/rest/descarcare?id={invoice_id}
-        url_base = config["efactura"]["download_url"]
+        url_base = config["efactura"]["LIBANAF_DOWNLOAD_URL"]
         url: str = f"{url_base}?id={invoice_id}"
         logger.debug(f"Downloading from: {url}")
         response: Response = await client.get(url)
@@ -78,6 +100,23 @@ async def download_invoice(
 
 
 async def download_all_invoices(invoices_to_download: list[str], download_dir: Path) -> None:
+    """Download a batch of invoices concurrently.
+
+    Creates an authenticated HTTP client, sets up a progress display, and
+    downloads all invoices listed in ``invoices_to_download`` with a
+    concurrency limit. Progress is reported using a single overall task.
+
+    Args:
+        invoices_to_download: List of invoice/message IDs to download.
+        download_dir: Destination directory for the downloaded ZIP files.
+
+    Returns:
+        None
+
+    Raises:
+        httpx.RequestError: If network/transport errors occur during requests.
+        OSError: If saving any file to disk fails.
+    """
     semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent downloads
     auth_client: LibANAF_AuthClient = make_auth_client()
     # httpx: AsyncOAuth2Client = auth_client.get_client()
@@ -113,11 +152,28 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
 
 
 def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P) -> None:
+    """Discover and download missing invoices.
+
+    Queries the ANAF API for recent invoice messages using the given filters,
+    determines which invoices are not yet present on disk, and downloads the
+    missing ones to the configured download directory. Displays progress and
+    reports errors to the console.
+
+    Args:
+        days: Number of past days to query for messages. Defaults to 60.
+        cif: Company CIF used for filtering. Defaults to 19507820.
+        filter: Additional filter applied to the message list (see `Filter`).
+
+    Returns:
+        None
+
+    Notes:
+        This function handles common HTTP errors and unexpected exceptions by
+        reporting them to the console instead of raising.
     """
-    Download missing invoices and store them locally.
-    """
+    config: dict[str, Any] = Configuration().setup().get_config()
     console = Console()
-    download_dir = Path(config["storage"]["download_directory"])
+    download_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
     download_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -147,12 +203,6 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
 
         loop.run_until_complete(download_all_invoices(invoices_to_download, download_dir))
         console.print("[bold green]Downloaded all missing invoices.[/bold green]")
-
-    except HTTPStatusError as e:
-        console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")
-    except Exception as e:
-        logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
-        console.print(f"[bold red]An error occurred:[/bold red] {e}")
 
     except HTTPStatusError as e:
         console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")

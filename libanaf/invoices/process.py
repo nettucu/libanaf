@@ -25,40 +25,36 @@ from libanaf.config import Configuration
 
 from ..ubl.ubl_document import parse_ubl_document
 
-config: dict[str, Any] = Configuration().load_config()
 logger: logging.Logger = logging.getLogger(__name__)
 
 
 async def get_pdf_path(xml_path: Path) -> Path:
     outfname = xml_path.stem + ".pdf"
 
-    async with aiofiles.open(xml_path, encoding="utf8") as xml_file:
-        try:
-            # logger.debug(f"Processing {xml_path}")
-            # content = await xml_file.read()
-            document = parse_ubl_document(xml_path)
-            # invoice: Invoice = Invoice.from_xml(bytes(content, encoding="utf8"))
+    try:
+        # Avoid async file IO; parsing directly from path is faster and sufficient here.
+        document = parse_ubl_document(xml_path)
 
-            if document is not None:
-                fname = document.tofname()
-                outfname = xml_path.stem + "_" + fname + ".pdf"
+        if document is not None:
+            fname = document.tofname()
+            outfname = xml_path.stem + "_" + fname + ".pdf"
 
-            # if invoice.has_attachment():
-            #     invoice.write_attachment(xml_path.parent / outfname)
-            #     return None
+        # if invoice.has_attachment():
+        #     invoice.write_attachment(xml_path.parent / outfname)
+        #     return None
 
-        except ValidationError as e:
-            logger.error(f"Invoice {xml_path}: {e}", exc_info=e)
-        except XMLSyntaxError as e:
-            logger.error(f"XML Syntax error {xml_path}: {e}", exc_info=e)
-        except ParsingError as e:
-            logger.error(f"XML Parse error {xml_path}: {e}", exc_info=e)
-        except asyncio.CancelledError as e:
-            # TODO: should we treat this specially or not ?
-            logger.error(f"asyncio ERROR {xml_path}", exc_info=e)
-            pass
-        except Exception as e:
-            logger.error(f"XML UNKNOWN error {xml_path}: {e}", exc_info=e)
+    except ValidationError as e:
+        logger.error(f"Invoice {xml_path}: {e}", exc_info=e)
+    except XMLSyntaxError as e:
+        logger.error(f"XML Syntax error {xml_path}: {e}", exc_info=e)
+    except ParsingError as e:
+        logger.error(f"XML Parse error {xml_path}: {e}", exc_info=e)
+    except asyncio.CancelledError as e:
+        # TODO: should we treat this specially or not ?
+        logger.error(f"asyncio ERROR {xml_path}", exc_info=e)
+        pass
+    except Exception as e:
+        logger.error(f"XML UNKNOWN error {xml_path}: {e}", exc_info=e)
 
     return xml_path.parent / outfname
 
@@ -77,12 +73,14 @@ async def convert_to_pdf(
         xml (Path): The XML file to be uploaded
         pdf (Path): The output path of the PDF received
     """
+    config: dict[str, Any] = Configuration().setup().get_config()
+
     async with semaphore:
         await asyncio.sleep(0.5)
 
         url = config["efactura"]["xml2pdf_url"]
         headers = {"Content-Type": "text/plain"}
-        async with aiofiles.open(xml, "r") as f:
+        async with aiofiles.open(xml) as f:
             data = await f.read()
 
         try:
@@ -166,28 +164,6 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
         console.print(f"[bold red]An error occurred:[/bold red] {e}")
 
 
-# def convert_invoices(download_dir: Path) -> None:
-#     console = Console()
-#     files_to_process: dict[Path, Path] = dict()
-
-#     for xml_file in download_dir.glob("*.xml"):
-#         pdf_file: Path = get_pdf_path(xml_file)
-
-#         if not pdf_file.exists():
-#             files_to_process[xml_file] = pdf_file
-
-#         # logger.debug(f"pdf_file = {pdf_file}")
-
-#     logger.debug(f"files_to_process = {files_to_process}")
-
-#     try:
-#         loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
-#         loop.run_until_complete(_convert_invoces(files_to_process=files_to_process))
-#     except Exception as e:
-#         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
-#         console.print(f"[bold red]An error occurred:[/bold red] {e}")
-
-
 def unzip_invoices(download_dir: Path) -> None:
     for zip_file in download_dir.glob("*.zip"):
         try:
@@ -214,7 +190,9 @@ def process_invoices():
     """
     Process downloaded invoices: unpack the zip file and convert XML to PDF.
     """
-    download_dir = Path(config["storage"]["download_directory"])
+    config: dict[str, Any] = Configuration().setup().get_config()
+
+    download_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
 
     unzip_invoices(download_dir=download_dir)
 
@@ -226,5 +204,3 @@ def process_invoices():
 
     semaphore = asyncio.Semaphore(2)
     asyncio.run(process_invoices_async(files_to_process=files_to_process, semaphore=semaphore))
-
-    # convert_invoices(download_dir=download_dir)

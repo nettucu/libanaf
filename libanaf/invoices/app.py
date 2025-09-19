@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 
@@ -18,17 +18,17 @@ logger = logging.getLogger(__name__)
 @app.command(name="list")
 def invoices_list(
     days: Annotated[
-        Optional[int],
+        int | None,
         typer.Argument(
             help="Numărul de zile pentru care se face interogarea, format numeric, valorile acceptate de la 1 la 60"
         ),
     ] = 60,
     cif: Annotated[
-        Optional[int],
+        int | None,
         typer.Argument(help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"),
     ] = 19507820,
     filter: Annotated[
-        Optional[Filter],
+        Filter | None,
         typer.Option(help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"),
     ] = Filter.P,
 ) -> None:
@@ -39,10 +39,10 @@ def invoices_list(
 
 @app.command(name="show")
 def show(
-    invoice_number: Annotated[Optional[str], typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
-    supplier_name: Annotated[Optional[str], typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
-    start_date: Annotated[Optional[datetime], typer.Option("--start-date", "-sd", help="Start Date")] = None,
-    end_date: Annotated[Optional[datetime], typer.Option("--end-date", "-ed", help="End Date")] = None,
+    invoice_number: Annotated[str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
+    supplier_name: Annotated[str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
+    start_date: Annotated[datetime | None, typer.Option("--start-date", "-sd", help="Start Date")] = None,
+    end_date: Annotated[datetime | None, typer.Option("--end-date", "-ed", help="End Date")] = None,
 ):
     """
     Shows all matching invoices. Filtering options:
@@ -60,17 +60,17 @@ def show(
 @app.command(name="download")
 def invoices_download(
     days: Annotated[
-        Optional[int],
+        int | None,
         typer.Argument(
             help="Numărul de zile pentru care se face interogarea, format numeric, valorile acceptate de la 1 la 60"
         ),
     ] = 60,
     cif: Annotated[
-        Optional[int],
+        int | None,
         typer.Argument(help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"),
     ] = 19507820,
     filter: Annotated[
-        Optional[Filter],
+        Filter | None,
         typer.Option(help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"),
     ] = Filter.P,
 ) -> None:
@@ -90,4 +90,3 @@ def invoices_process() -> None:
     """
     typer.echo("Starting processing ...")
     process_invoices()
-

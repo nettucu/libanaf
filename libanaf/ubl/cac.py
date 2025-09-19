@@ -201,9 +201,9 @@ class AllowanceCharge(BaseXmlModel, tag="AllowanceCharge", search_mode="unordere
     prepaid_indicator: Optional[bool] = element(tag="PrepaidIndicator", default=None, ns="cbc", nsmap=NSMAP)
     sequence_numeric: Optional[int] = element(tag="SequenceNumeric", default=None, ns="cbc", nsmap=NSMAP)
     amount: float = element(tag="Amount", ns="cbc", nsmap=NSMAP)
-    base_amount: float = element(tag="BaseAmount", ns="cbc", nsmap=NSMAP)
-    per_unit_amount: Optional[float] = element(tag="PerUnitAmount", ns="cbc", nsmap=NSMAP)
-    tax_category: Optional[TaxCategory]
+    base_amount: Optional[float] = element(tag="BaseAmount", default=None, ns="cbc", nsmap=NSMAP)
+    per_unit_amount: Optional[float] = element(tag="PerUnitAmount", default=None, ns="cbc", nsmap=NSMAP)
+    tax_category: Optional[TaxCategory] = None
     tax_total: Optional[str] = element(tag="TaxTotal", default=None, ns="cac", nsmap=NSMAP)
 
 
@@ -249,6 +249,7 @@ class InvoiceLine(BaseXmlModel, tag="InvoiceLine", search_mode="unordered", ns="
     order_line_reference: Optional[OrderLineReference] = None
     item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP)
     price: Optional[Price] = None  # = element(tag="Price", ns="cac", nsmap=NSMAP)
+    allowance_charge: Optional[List[AllowanceCharge]] = None
 
 
 class CreditNoteLine(BaseXmlModel, tag="CreditNoteLine", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
@@ -260,6 +261,7 @@ class CreditNoteLine(BaseXmlModel, tag="CreditNoteLine", search_mode="unordered"
     line_extension_amount: float = element(tag="LineExtensionAmount", ns="cbc", nsmap=NSMAP_CREDIT_NOTE)
     item: Item  # = element(tag="Item", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
     price: Price = element(tag="Price", ns="cac", nsmap=NSMAP_CREDIT_NOTE)
+    allowance_charge: Optional[List[AllowanceCharge]] = None
 
 
 class TaxSubtotal(BaseXmlModel, tag="TaxSubtotal", ns="cac"):  # nsmap=NSMAP):

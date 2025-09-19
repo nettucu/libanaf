@@ -1,42 +1,42 @@
 [auth]
-auth_url = "https://logincert.anaf.ro/anaf-oauth2/v1/authorize"
-token_url = "https://logincert.anaf.ro/anaf-oauth2/v1/token"
-revoke_url = "https://logincert.anaf.ro/anaf-oauth2/v1/revoke"
-client_id = "$CLIENT_ID"
-client_secret = "$CLIENT_SECRET"
-redirect_uri = "$REDIRECT_URI"
+LIBANAF_AUTH_URL = "https://logincert.anaf.ro/anaf-oauth2/v1/authorize"
+LIBANAF_TOKEN_URL = "https://logincert.anaf.ro/anaf-oauth2/v1/token"
+LIBANAF_REVOKE_URL = "https://logincert.anaf.ro/anaf-oauth2/v1/revoke"
+LIBANAF_CLIENT_ID = "$LIBNAF_CLIENT_ID"
+LIBANAF_CLIENT_SECRET = "$LIBANAF_CLIENT_SECRET"
+LIBANAF_REDIRECT_URI = "$LIBANAF_REDIRECT_URI"
 
 [connection]
-access_token="$ACCESS_TOKEN"
-refresh_token="$REFRESH_TOKEN"
+LIBANAF_ACCESS_TOKEN = "$LIBANAF_ACCESS_TOKEN"
+LIBANAF_REFRESH_TOKEN = "$LIBANAF_REFRESH_TOKEN"
 
 # see https://mfinante.gov.ro/static/10/eFactura/prezentare%20api%20efactura.pdf
 [efactura]
 # https://api.anaf.ro/prod/FCTEL/rest/upload?standard={val1}&cif={val2}&extern=DA&autofactura=DA
-upload_url = "https://api.anaf.ro/prod/FCTEL/rest/upload" # ?standard={val1}&cif={val2}"
-upload_url_params = ["standard", "cif"]
+LIBANAF_UPLOAD_URL = "https://api.anaf.ro/prod/FCTEL/rest/upload" # ?standard={val1}&cif={val2}"
+LIBANAF_UPLOAD_URL_PARAMS = ["standard", "cif"]
 
 # https://api.anaf.ro/prod/FCTEL/rest/stareMesaj?id_incarcare={val1}
-message_state_url = "https://api.anaf.ro/prod/FCTEL/rest/stareMesaj"
-message_state_url_params = ["id_incarcare"]
+LIBANAF_MESSAGE_STATE_URL = "https://api.anaf.ro/prod/FCTEL/rest/stareMesaj"
+LIBANAF_MESSAGE_STATE_URL_PARAMS = ["id_incarcare"]
 
-# https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura?zile={val1}&cif={val2} &filtru={val3} 
-message_list_url = "https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura"
-message_list_url_params = ["zile", "cif", "filtru"]
+# https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura?zile={val1}&cif={val2} &filtru={val3}
+LIBANAF_MESSAGE_LIST_URL = "https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura"
+LIBANAF_MESSAGE_LIST_URL_PARAMS = ["zile", "cif", "filtru"]
 
 # GET https://api.anaf.ro/prod/ FCTEL/rest/descarcare?id= {val1}
-download_url = "https://api.anaf.ro/prod/FCTEL/rest/descarcare"
-download_url_params = ["id"]
+LIBANAF_DOWNLOAD_URL = "https://api.anaf.ro/prod/FCTEL/rest/descarcare"
+LIBANAF_DOWNLOAD_URL_PARAMS = ["id"]
 
 # no auth: POST https://webservicesp.anaf.ro/prod/FCTEL/rest/validare/{val1}
 # oauth2: POST https:// api.anaf.ro /prod/FCTEL/rest/validare/{val1}
 # Content-Type = text/plain
-xml_validate_url = "https:// api.anaf.ro /prod/FCTEL/rest/validare/FACT1"
+LIBANAF_XML_VALIDATE_URL = "https://api.anaf.ro/prod/FCTEL/rest/validare/FACT1"
 
 # xml2pdf_url = "https://webservicesp.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA"
 # POST  https://api.anaf.ro/prod/FCTEL/rest/transformare/{val1}/{val2}
 # Content-Type = text/plain
-xml2pdf_url = "https://api.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA" 
+LIBANAF_XML2PDF_URL = "https://api.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA"
 
 [storage]
-download_directory = "/home/catalin/work/libanaf/dlds/"
+LIBANAF_DOWNLOAD_DIR = "/home/catalin/work/libanaf/dlds/"

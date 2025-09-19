@@ -53,7 +53,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/main.py",
       "console": "integratedTerminal",
-      "args": ["invoices", "show", "-i", "FIMCGb8202"],
+      "args": ["invoices", "show", "-i", "FIMCGB8202"],
       "justMyCode": false
     }
   ]

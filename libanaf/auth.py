@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import webbrowser
 from pathlib import Path
@@ -81,7 +82,7 @@ class LibANAF_AuthServer:
                     mimetype="text/plain",
                 )
 
-        logger.debug("Starting server on localhost:8000")
+        logger.debug(f"Starting server on {self.host}:{self.port}, SSL={self.use_ssl}")
         if self.use_ssl:
             self.server = make_server(
                 self.host,
@@ -155,7 +156,7 @@ class LibANAF_AuthClient:
         logger.debug(token)
         logger.debug(refresh_token)
 
-        config = Configuration()
+        config = Configuration().setup()
         config.save_tokens(tokens=token)
 
         self.access_token = token["access_token"]
@@ -188,16 +189,24 @@ class LibANAF_AuthClient:
             }
 
     def start_local_server(self):
-        # TODO: the certificate and keyfile should not be hardcoded here
         """Start a one-shot local callback server for the authorization flow.
 
         Returns:
             werkzeug.datastructures.MultiDict: Query params from the redirect
             request, typically containing either `code` on success or `error`.
         """
-        basedir = Path(__file__).parent.parent
-        cert_file = basedir / "secrets" / "cert.pem"
-        key_file = basedir / "secrets" / "key.pem"
+        # Load certificate/key from environment (dotenv is already handled by Configuration)
+        conf = Configuration().setup()
+
+        cert_file_env = os.getenv("LIBANAF_TLS_CERT_FILE")
+        key_file_env = os.getenv("LIBANAF_TLS_KEY_FILE")
+
+        # Fallback to defaults under secrets/ if env vars are not set
+        default_cert = Path(conf.secrets_path / "cert.pem")
+        default_key = Path(conf.secrets_path / "key.pem")
+
+        cert_file = cert_file_env or (str(default_cert) if default_cert.exists() else None)
+        key_file = key_file_env or (str(default_key) if default_key.exists() else None)
 
         auth_server = LibANAF_AuthServer(use_ssl=self.use_ssl, cert_file=cert_file, key_file=key_file)
 
