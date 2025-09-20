@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 
-from libanaf.config import Configuration
+from libanaf.config import get_config, AppConfig
 from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
@@ -54,8 +54,8 @@ def show_invoices(
         )
         raise typer.Exit(code=1)
 
-    config = Configuration().setup().get_config()
-    dlds_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
+    config: AppConfig = get_config()
+    dlds_dir = config.storage.download_dir
 
     # 2) Gather candidate files using pure Python scan (or fallback if only date range is used)
     candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date, end_date)

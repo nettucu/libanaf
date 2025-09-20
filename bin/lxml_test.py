@@ -1,4 +1,3 @@
-from io import StringIO
 from pathlib import Path
 
 from lxml import etree

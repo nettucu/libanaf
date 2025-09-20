@@ -3,7 +3,6 @@ import json
 import logging
 import zipfile
 from pathlib import Path
-from typing import Any
 
 import aiofiles
 import typer
@@ -21,7 +20,7 @@ from rich.progress import (
 )
 
 from libanaf.comms import make_auth_client
-from libanaf.config import Configuration
+from libanaf.config import get_config, AppConfig
 
 from ..ubl.ubl_document import parse_ubl_document
 
@@ -73,12 +72,12 @@ async def convert_to_pdf(
         xml (Path): The XML file to be uploaded
         pdf (Path): The output path of the PDF received
     """
-    config: dict[str, Any] = Configuration().setup().get_config()
+    config: AppConfig = get_config()
 
     async with semaphore:
         await asyncio.sleep(0.5)
 
-        url = config["efactura"]["xml2pdf_url"]
+        url = config.efactura.xml2pdf_url
         headers = {"Content-Type": "text/plain"}
         async with aiofiles.open(xml) as f:
             data = await f.read()
@@ -123,8 +122,8 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
     console = Console()
 
     try:
-        # semaphore = asyncio.Semaphore(2) # only 2 concurrent runs
-        httpx_client: AsyncClient = make_auth_client().get_client()
+        config: AppConfig = get_config()
+        httpx_client: AsyncClient = make_auth_client(config).get_client()
 
         with Progress(
             SpinnerColumn(),
@@ -190,9 +189,9 @@ def process_invoices():
     """
     Process downloaded invoices: unpack the zip file and convert XML to PDF.
     """
-    config: dict[str, Any] = Configuration().setup().get_config()
+    config: AppConfig = get_config()
 
-    download_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
+    download_dir = config.storage.download_dir
 
     unzip_invoices(download_dir=download_dir)
 

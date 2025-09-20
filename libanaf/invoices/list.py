@@ -8,9 +8,9 @@ from httpx import HTTPStatusError, Response
 from rich.console import Console
 from rich.table import Table
 
-from ..auth import LibANAF_AuthClient
-from ..comms import make_auth_client
-from ..config import Configuration
+from ..auth import LibANAF_AuthClient  # Keep for type hinting
+from ..comms import make_auth_client  # This will now take config
+from ..config import get_config, AppConfig
 from ..types import Filter
 
 console = Console()
@@ -33,10 +33,10 @@ logger = logging.getLogger(__name__)
 async def fetch_invoice_list(
     days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P
 ) -> dict[str, str | list[dict[str, str]]]:
-    config = Configuration().setup().get_config()
+    config: AppConfig = get_config()
     # access_token = config["connection"]["access_token"]
     # "https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura"
-    base_url: str = config["efactura"]["LIBANAF_MESSAGE_LIST_URL"]
+    base_url: str = config.efactura.message_list_url
 
     params: dict[str, str] = {"zile": str(days), "cif": str(cif)}
     if filter:
@@ -52,7 +52,7 @@ async def fetch_invoice_list(
     # CC750124842
     # 651415973
 
-    auth_client: LibANAF_AuthClient = make_auth_client()
+    auth_client: LibANAF_AuthClient = make_auth_client(config)
     httpx: AsyncOAuth2Client = auth_client.get_client()
 
     response: Response = await httpx.get(url=base_url, params=params)

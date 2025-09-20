@@ -31,7 +31,7 @@ class PostalAddress(BaseXmlModel, tag="PostalAddress", search_mode="unordered", 
 
     def get_display_str(self) -> dict[str, str]:
         address = ""
-        if self.additional_street_name is not None:
+        if self.address_line is not None:
             address = " ".join(self.address_line)  # pyright: ignore
         else:
             street = self.street_name or ""

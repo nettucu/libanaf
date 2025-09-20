@@ -2,7 +2,6 @@ import logging
 import os
 import threading
 import webbrowser
-from pathlib import Path
 from queue import Queue
 from typing import Any
 
@@ -11,8 +10,7 @@ import typer
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
-
-from libanaf.config import Configuration
+from libanaf.config import get_config, save_tokens, AppConfig
 
 logger = logging.getLogger()
 
@@ -153,11 +151,11 @@ class LibANAF_AuthClient:
             token: The new token payload as provided by Authlib.
             refresh_token: The new refresh token value (may be present in `token`).
         """
-        logger.debug(token)
-        logger.debug(refresh_token)
+        logger.debug(f"Token received for update: {token}")
+        logger.debug(f"Refresh token received for update: {refresh_token}")
 
-        config = Configuration().setup()
-        config.save_tokens(tokens=token)
+        config: AppConfig = get_config()  # Get the current config instance
+        save_tokens(config, tokens=token)
 
         self.access_token = token["access_token"]
         self.refresh_token = token["refresh_token"]
@@ -196,15 +194,15 @@ class LibANAF_AuthClient:
             request, typically containing either `code` on success or `error`.
         """
         # Load certificate/key from environment (dotenv is already handled by Configuration)
-        conf = Configuration().setup()
+        config: AppConfig = get_config()  # Get the current config instance
 
         cert_file_env = os.getenv("LIBANAF_TLS_CERT_FILE")
         key_file_env = os.getenv("LIBANAF_TLS_KEY_FILE")
 
         # Fallback to defaults under secrets/ if env vars are not set
-        default_cert = Path(conf.secrets_path / "cert.pem")
-        default_key = Path(conf.secrets_path / "key.pem")
-
+        # The secrets_path is now part of the AppConfig's env_config_file's parent directory
+        default_cert = config.env_config_file.parent / "cert.pem"
+        default_key = config.env_config_file.parent / "key.pem"
         cert_file = cert_file_env or (str(default_cert) if default_cert.exists() else None)
         key_file = key_file_env or (str(default_key) if default_key.exists() else None)
 

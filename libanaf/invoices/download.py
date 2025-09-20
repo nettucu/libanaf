@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any
 from collections.abc import Awaitable, Callable
 
 from httpx import AsyncClient, HTTPStatusError, Response
@@ -16,10 +15,9 @@ from rich.progress import (
 )
 
 from libanaf.types import Filter
-
-from ..auth import LibANAF_AuthClient
-from ..comms import make_auth_client
-from ..config import Configuration
+from ..auth import LibANAF_AuthClient  # Keep for type hinting
+from ..comms import make_auth_client  # This will now take config
+from ..config import get_config, AppConfig
 from ._utils import is_invoice_downloaded
 from .list import fetch_invoice_list
 
@@ -64,12 +62,12 @@ async def download_invoice(
         OSError: If writing the downloaded file to disk fails.
         httpx.RequestError: On underlying transport errors while performing the request.
     """
-    config: dict[str, Any] = Configuration().setup().get_config()
+    config: AppConfig = get_config()  # Get the AppConfig instance
 
     async with semaphore:
         await asyncio.sleep(0.1)  # Add a delay of ~1 second before starting the download
         #  https://api.anaf.ro/prod/FCTEL/rest/descarcare?id={invoice_id}
-        url_base = config["efactura"]["LIBANAF_DOWNLOAD_URL"]
+        url_base = config.efactura.download_url
         url: str = f"{url_base}?id={invoice_id}"
         logger.debug(f"Downloading from: {url}")
         response: Response = await client.get(url)
@@ -117,8 +115,9 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
         httpx.RequestError: If network/transport errors occur during requests.
         OSError: If saving any file to disk fails.
     """
+    config: AppConfig = get_config()
     semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent downloads
-    auth_client: LibANAF_AuthClient = make_auth_client()
+    auth_client: LibANAF_AuthClient = make_auth_client(config)
     # httpx: AsyncOAuth2Client = auth_client.get_client()
 
     async with auth_client.get_client() as client:
@@ -171,9 +170,9 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
         This function handles common HTTP errors and unexpected exceptions by
         reporting them to the console instead of raising.
     """
-    config: dict[str, Any] = Configuration().setup().get_config()
     console = Console()
-    download_dir = Path(config["storage"]["LIBANAF_DOWNLOAD_DIR"])
+    config: AppConfig = get_config()
+    download_dir = config.storage.download_dir
     download_dir.mkdir(parents=True, exist_ok=True)
 
     try:
