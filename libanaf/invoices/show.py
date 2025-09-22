@@ -6,10 +6,8 @@ human-readable tables using Rich.
 """
 
 import logging
-from datetime import date
-from pathlib import Path
+from datetime import date, datetime
 from typing import cast
-import re
 
 import typer
 from rich import box
@@ -20,24 +18,35 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 
-from libanaf.config import get_config, AppConfig
-from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
-from libanaf.ubl.credit_note import CreditNote
-from libanaf.ubl.invoice import Invoice
-from libanaf.ubl.ubl_document import parse_ubl_document
+from ..config import get_config, AppConfig
+from .query import gather_candidate_files, parse_and_filter_documents
+from ..ubl.cac import Party, CreditNoteLine, InvoiceLine
+from ..ubl.credit_note import CreditNote
+from ..ubl.invoice import Invoice
 
 logger = logging.getLogger(__name__)
 console = Console()
 
 
+def _coerce_to_date(value: date | datetime | None) -> date | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.date()
+    return value
+
+
 def show_invoices(
-    invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
+    invoice_number: str | None,
+    supplier_name: str | None,
+    start_date: date | datetime | None,
+    end_date: date | datetime | None,
 ) -> None:
     """Show invoices from local storage filtered by criteria.
 
     Args:
         invoice_number: Partial or full invoice number to search in XML `<cbc:ID>`.
-        supplier_name: Partial or full supplier name to search in XML `<cbc:Name>`.
+        supplier_name: Partial or full supplier name to search in XML `<cbc:Name|RegistrationName>`.
         start_date: Inclusive start date (YYYY-MM-DD) when combined with `end_date`.
         end_date: Inclusive end date (YYYY-MM-DD) when combined with `start_date`.
 
@@ -54,127 +63,23 @@ def show_invoices(
         )
         raise typer.Exit(code=1)
 
+    start_date_obj = _coerce_to_date(start_date)
+    end_date_obj = _coerce_to_date(end_date)
+
     config: AppConfig = get_config()
     dlds_dir = config.storage.download_dir
 
     # 2) Gather candidate files using pure Python scan (or fallback if only date range is used)
-    candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date, end_date)
+    candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date_obj, end_date_obj)
     logger.debug(f"Found {len(candidate_files)}")
     logger.debug(candidate_files)
 
     # 3) Parse and filter the candidate files (double-check date range, etc.)
-    documents = parse_and_filter_documents(candidate_files, start_date, end_date)
+    documents = parse_and_filter_documents(candidate_files, start_date_obj, end_date_obj)
 
     # 4) Display results
     # display_documents(documents)
     display_documents_pdf_style(documents)
-
-
-def _compile_search_patterns(invoice_number: str | None, supplier_name: str | None) -> list[re.Pattern[str]]:
-    """Compile case-insensitive regex patterns for XML content search.
-
-    - For invoice number, matches inside `<cbc:ID> ... </cbc:ID>`.
-    - For supplier name, matches inside `<cbc:Name> ... </cbc:Name>`.
-
-    Args:
-        invoice_number: Invoice number fragment to search.
-        supplier_name: Supplier name fragment to search.
-
-    Returns:
-        list[re.Pattern[str]]: Compiled regex patterns to test XML text.
-    """
-    patterns: list[re.Pattern[str]] = []
-    if invoice_number:
-        inv_esc = re.escape(invoice_number)
-        patterns.append(re.compile(rf"<cbc:ID>[^<]*{inv_esc}[^<]*</cbc:ID>", re.IGNORECASE))
-    if supplier_name:
-        sup_esc = re.escape(supplier_name)
-        patterns.append(re.compile(rf"<cbc:Name>[^<]*{sup_esc}[^<]*</cbc:Name>", re.IGNORECASE))
-
-    return patterns
-
-
-def gather_candidate_files(
-    dlds_dir: Path, invoice_number: str | None, supplier_name: str | None, start_date: str | None, end_date: str | None
-) -> set[Path]:
-    """Collect XML files that match text filters before parsing.
-
-    If only date range is provided, returns all `.xml` files from `dlds_dir`
-    to let downstream logic filter by dates.
-
-    Args:
-        dlds_dir: Directory containing downloaded XML documents.
-        invoice_number: Invoice number fragment to search in `<cbc:ID>`.
-        supplier_name: Supplier name fragment to search in `<cbc:Name>`.
-        start_date: Inclusive start date (YYYY-MM-DD) if paired with `end_date`.
-        end_date: Inclusive end date (YYYY-MM-DD) if paired with `start_date`.
-
-    Returns:
-        set[Path]: Candidate XML file paths matching text filters.
-    """
-    # If only date range provided, we need to parse documents to filter by date
-    if (start_date and end_date) and not (invoice_number or supplier_name):
-        return set(dlds_dir.glob("*.xml"))
-
-    patterns = _compile_search_patterns(invoice_number, supplier_name)
-    if not patterns:
-        # No textual filters; return empty set so later logic can decide based on dates
-        return set()
-
-    candidate_files: set[Path] = set()
-    for xml_path in dlds_dir.glob("*.xml"):
-        try:
-            # Read as text once; XML files are typically small. Use errors='ignore' for robustness.
-            text = xml_path.read_text(encoding="utf-8", errors="ignore")
-        except Exception as e:
-            logger.debug(f"Skipping {xml_path}: read error: {e}")
-            continue
-
-        for pat in patterns:
-            if pat.search(text):
-                candidate_files.add(xml_path)
-                break  # short-circuit on first match (OR semantics)
-
-    return candidate_files
-
-
-def parse_and_filter_documents(
-    candidate_files: set[Path],
-    start_date: date | None,
-    end_date: date | None,
-) -> list[Invoice | CreditNote]:  # or list of UBLDocument but we cast to Invoice below
-    """Parse candidate files and filter documents by date.
-
-    Args:
-        candidate_files: Set of XML paths to parse as UBL Invoice/CreditNote.
-        start_date: Keep docs with `issue_date >= start_date` when provided.
-        end_date: Keep docs with `issue_date <= end_date` when provided.
-
-    Returns:
-        list[Invoice | CreditNote]: Parsed and filtered documents.
-    """
-
-    results: list[Invoice | CreditNote] = []
-    for xml_file in sorted(candidate_files):
-        try:
-            doc = parse_ubl_document(xml_file)
-        except Exception as e:
-            logger.error(f"Skipping {xml_file}, parse error: {e}")
-            continue
-
-        # Only keep if it's an Invoice
-        if not isinstance(doc, Invoice | CreditNote):
-            continue
-
-        # Filter by date range if both are given
-        if start_date and doc.issue_date < start_date:
-            continue
-        if end_date and doc.issue_date > end_date:
-            continue
-
-        results.append(doc)
-
-    return results
 
 
 def display_documents(docs: list[Invoice | CreditNote]) -> None:
@@ -207,7 +112,12 @@ def display_documents(docs: list[Invoice | CreditNote]) -> None:
         # 2) Build the Rich table for this document
         #    The title can have multiple lines by using \n
         table_title = f"{supplier_name}\n{doc_id}\n{issue_date_str}"
-        table = Table(title=table_title, show_header=True, header_style="bold white on navy_blue", width=1200)
+        table = Table(
+            title=table_title,
+            show_header=True,
+            header_style="bold white on navy_blue",
+            width=1200,
+        )
 
         # 3) Add columns for item details
         table.add_column("Item Name", justify="left", style="cyan", no_wrap=True)
@@ -374,7 +284,10 @@ class InvoiceRenderer:
         if doc.due_date:
             right.append(f"Termen de plata: {doc.due_date.strftime('%d/%m/%Y')}")
         currency = getattr(doc, "document_currency_code", None) or "RON"
-        left = Text(f"{doc_type} {doc.id} din {doc.issue_date.strftime('%d/%m/%Y')}  [ {currency} ]", style="bold")
+        left = Text(
+            f"{doc_type} {doc.id} din {doc.issue_date.strftime('%d/%m/%Y')}  [ {currency} ]",
+            style="bold",
+        )
         content = Columns([left, Text(""), right], equal=False, expand=True)
         return Panel(content, title=doc_type, title_align="left", padding=(1, 2))
 
@@ -546,10 +459,18 @@ class InvoiceRenderer:
             vat = groups[p]["vat"] * sign
             total_base += base
             total_vat += vat
-            t.add_row(_format_percent(p), _format_money(base, currency), _format_money(vat, currency))
+            t.add_row(
+                _format_percent(p),
+                _format_money(base, currency),
+                _format_money(vat, currency),
+            )
 
         t.add_row("", "", "")
-        t.add_row("Total", _format_money(total_base, currency), _format_money(total_vat, currency))
+        t.add_row(
+            "Total",
+            _format_money(total_base, currency),
+            _format_money(total_vat, currency),
+        )
         return Panel(t, title="Rezumat TVA", padding=(0, 1))
 
     def _build_totals_panel(self, doc: Invoice | CreditNote) -> Panel:
@@ -608,7 +529,10 @@ class InvoiceRenderer:
         t.add_column("", justify="right")
         for label, value in rows:
             if label == "Total de plata":
-                t.add_row(Text(label, style="bold white on dark_green"), Text(_format_money(value, cur), style="bold"))
+                t.add_row(
+                    Text(label, style="bold white on dark_green"),
+                    Text(_format_money(value, cur), style="bold"),
+                )
             else:
                 t.add_row(label, _format_money(value, cur))
 

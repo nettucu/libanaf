@@ -46,12 +46,13 @@ Agents should use the following **primary context files** before making changes:
 All code changes must:
 
 - Pass `ruff check .`
-- Pass `black . --check`
-- Pass type checks (`pyright` or `mypy`)
 - Pass all tests (`pytest -q`)
 - Achieve ≥85% coverage in touched modules
 - Use Google or NumPy style docstrings
 - Include type hints for all function arguments and returns
+- Use fstrings for formatted messages
+- Use collections.abc where apropiate and usually latest python language features
+- Prefer local imports where feasible
 
 ---
 
@@ -62,7 +63,7 @@ All code changes must:
 - **Read/modify code** in `libanaf/`, `tests/`, `ai/briefs/`
 - **Add tests** and fixtures in `tests/`
 - **Update docs** in `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`
-- **Run local tools**: `ruff`, `black`, `pyright`, `pytest`, `coverage`, `uv`, `make`
+- **Run local tools**: `ruff`, `pytest`, `coverage`, `uv`, `make`
 
 ### Disallowed Actions
 
