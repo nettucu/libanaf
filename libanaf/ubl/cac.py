@@ -195,7 +195,7 @@ class AllowanceCharge(BaseXmlModel, tag="AllowanceCharge", search_mode="unordere
         tag="AllowanceChargeReasonCode", default=None, ns="cbc", nsmap=NSMAP
     )
     allowance_charge_reason: Optional[str] = element(tag="AllowanceChargeReason", default=None, ns="cbc", nsmap=NSMAP)
-    multiplier_factor_numeric: Optional[int] = element(
+    multiplier_factor_numeric: Optional[float] = element(
         tag="MultiplierFactorNumeric", default=None, ns="cbc", nsmap=NSMAP
     )
     prepaid_indicator: Optional[bool] = element(tag="PrepaidIndicator", default=None, ns="cbc", nsmap=NSMAP)
