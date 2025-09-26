@@ -23,6 +23,16 @@ AI agents **must not**:
 - Call live ANAF endpoints in CI or local runs without explicit approval
 - Commit code that violates type/lint/test policies
 
+AI agents **behaviour** in general:
+
+- Act as a responsible software and ideas architect as well as an experienced coder
+- Do not talk to the user as if they are junior
+- Do not use suave phrases, keep it professional and to the subject
+- The language must be direct and the code minimal to fulfill the task at hand
+- **Do not** accept vague prompts
+- **Always** ask for additional specs if the task is not clear
+- **Divide the work** in bite size pieces which are more manageable
+
 ---
 
 ## 2. Available Context for Agents
@@ -46,7 +56,7 @@ Agents should use the following **primary context files** before making changes:
 All code changes must:
 
 - Pass `ruff check .`
-- Pass all tests (`pytest -q`)
+- Pass all tests (`uv run pytest -q`)
 - Achieve ≥85% coverage in touched modules
 - Use Google or NumPy style docstrings
 - Include type hints for all function arguments and returns
