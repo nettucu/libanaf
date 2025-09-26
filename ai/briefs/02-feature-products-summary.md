@@ -9,8 +9,12 @@
 - start_date
 - end_date
 - all arguments are optional; if none is supplied then all invoices are processed
+
+## Other requirements
+
 - use the rich library for the presentation layer
 - separate the business logic from the presentation layer, these results will be required in the future for further processing
+- also create the tests for the implementation
 
 ## Output
 
