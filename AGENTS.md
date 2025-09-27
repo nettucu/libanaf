@@ -58,11 +58,12 @@ All code changes must:
 - Pass `ruff check .`
 - Pass all tests (`uv run pytest -q`)
 - Achieve ≥85% coverage in touched modules
-- Use Google or NumPy style docstrings
+- **ALWAYS** Create Google or NumPy style docstrings describing the function and it's arguments
 - Include type hints for all function arguments and returns
-- Use fstrings for formatted messages
+- **ALWAYS** Use fstrings for formatted messages
 - Use collections.abc where apropiate and usually latest python language features
 - Prefer local imports where feasible
+- **DO NOT** duplicate code, **Always** check if the functionality is there and reuse it, if refactoring is needed to do so then **ASK**
 
 ---
 

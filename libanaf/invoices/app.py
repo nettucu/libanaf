@@ -10,6 +10,7 @@ from .list import list_invoices
 from .process import process_invoices
 from .show import show_invoices
 from .summary import summarize_invoices
+from .product_summary import summarize_products
 
 app = typer.Typer()
 
@@ -94,6 +95,30 @@ def summary(
         f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
     )
     summarize_invoices(invoice_number, supplier_name, start_date, end_date)
+
+
+@app.command(name="prod-summary")
+def prod_summary(
+    invoice_number: Annotated[
+        str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")
+    ] = None,
+    supplier_name: Annotated[
+        str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")
+    ] = None,
+    start_date: Annotated[
+        datetime | None, typer.Option("--start-date", "-sd", help="Start Date")
+    ] = None,
+    end_date: Annotated[
+        datetime | None, typer.Option("--end-date", "-ed", help="End Date")
+    ] = None,
+) -> None:
+    """Show a product-level summary for invoices or credit notes."""
+
+    typer.echo(
+        "Generating product summary with params: "
+        f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
+    )
+    summarize_products(invoice_number, supplier_name, start_date, end_date)
 
 
 @app.command(name="download")

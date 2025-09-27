@@ -41,3 +41,11 @@ tests/fixtues/invoice-4249721031_470534743.xml
 ## Other files
 
 - See invoices/show and invoices/summary for some examples of files search, rich usage and calculations
+
+## Implementation Steps
+
+1. Reviewed existing invoice summary tooling and UBL models to understand document, line, and allowance data needed for product aggregation.
+2. Implemented `libanaf/invoices/product_summary.py` with reusable business logic, rounding, and Rich presentation plus wired the new `prod-summary` CLI command.
+3. Added regression tests around discount allocation, credit-note handling, document collection, and CLI rendering under `tests/test_product_summary.py`.
+4. Documented usage in `README.md` so the new command is discoverable.
+5. Ran formatting and test commands (`ruff`, `pytest`) to confirm everything stays green.
