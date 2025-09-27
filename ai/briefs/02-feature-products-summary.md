@@ -14,6 +14,8 @@
 
 - use the rich library for the presentation layer
 - separate the business logic from the presentation layer, these results will be required in the future for further processing
+- comment all the code created by the agent using Google style comments
+- separate the business logic from the presentation logic
 - also create the tests for the implementation
 
 ## Output
