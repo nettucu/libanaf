@@ -1,9 +1,66 @@
 from enum import Enum
 
 
-
 class Filter(str, Enum):
     E = "E"
     T = "T"
     P = "P"
     R = "R"
+
+
+UNIT_CODES = {
+    "ANN": "Year",
+    "C62": "Unit (general purpose)",
+    "DAY": "Day",
+    "EA": "Each",
+    "GJ": "Gigajoule",
+    "H87": "Piece",
+    "HUR": "Hour",
+    "IE": "Person",
+    "KGM": "Kilogram",
+    "KT": "Kit",
+    "KWH": "Kilowatt hour",
+    "LM": "Linear metre",
+    "M4": "Monetary value",
+    "MON": "Month",
+    "MTQ": "Cubic metre",
+    "PR": "Pair",
+    "SAN": "Half year (six months)",
+    "SET": "Set",
+    "SX": "Shipment",
+    "SYR": "Syringe",
+    "X5M": "Actual settlement weight",
+    "XBE": "Bundle",
+    "XBO": "Bottle",
+    "XBX": "Box",
+    "XCT": "Carton",
+    "XEC": "Each per month",
+    "XPO": "Pallet (ISO 0.8m x 1.2m)",
+    "XPP": "Pallet (ISO 1m x 1.2m)",
+    "XRL": "Roll",
+    "XRO": "Roll (customized)",
+    "XSA": "Sack",
+    "XSW": "Shrink wrapped unit",
+    "XSX": "Set (assorted)",
+    "XUN": "Unit (unspecified)",
+    "XXD": "Job",
+    "LTR": "Litre",
+    "MTR": "Metre",
+    "CMQ": "Cubic centimetre",
+    "DZN": "Dozen",
+    "GRM": "Gram",
+    "TNE": "Tonne (metric ton)",
+    "MMT": "Millimetre",
+    "HMT": "Hectometre",
+    "MIN": "Minute",
+    "SEC": "Second",
+    "WEE": "Week",
+    "MMQ": "Cubic millimetre",
+    "MLT": "Millilitre",
+    "KMT": "Kilometre",
+    "AMP": "Ampere",
+    "VLT": "Volt",
+    "WTT": "Watt",
+    "JOU": "Joule",
+    "NAR": "Number of articles",
+}

@@ -17,10 +17,15 @@ from rich.console import Console
 from rich.table import Table
 
 from ..config import AppConfig, get_config
-from ..ubl.cac import Party
-from .query import gather_candidate_files, parse_and_filter_documents
 from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
+from .common import (
+    DateValidationError,
+    collect_documents as shared_collect_documents,
+    ensure_date_range,
+    extract_supplier_name,
+    format_currency,
+)
 
 logger = logging.getLogger(__name__)
 DEFAULT_CONSOLE = Console()
@@ -58,15 +63,19 @@ def summarize_invoices(
         )
         raise typer.Exit(code=1)
 
-    start = _to_date(start_date)
-    end = _to_date(end_date)
-
-    if (start is None) != (end is None):
-        summary_console.print("[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]")
-        raise typer.Exit(code=1)
-
-    if start and end and start > end:
-        summary_console.print("[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
+    try:
+        start, end = ensure_date_range(start_date, end_date)
+    except DateValidationError as exc:
+        if exc.code == "both_required":
+            summary_console.print(
+                "[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
+            )
+        elif exc.code == "start_after_end":
+            summary_console.print(
+                "[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]"
+            )
+        else:  # pragma: no cover - defensive branch
+            summary_console.print("[bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
     app_config = config or get_config()
@@ -109,10 +118,14 @@ def collect_documents(
         end_date,
     )
 
-    candidate_files = gather_candidate_files(search_dir, invoice_number, supplier_name, start_date, end_date)
-    logger.debug("summary collect_documents: %d candidate files", len(candidate_files))
-
-    documents = parse_and_filter_documents(candidate_files, start_date, end_date)
+    documents = shared_collect_documents(
+        search_dir,
+        invoice_number=invoice_number,
+        supplier_name=supplier_name,
+        start_date=start_date,
+        end_date=end_date,
+        allow_unfiltered=False,
+    )
     logger.debug("summary collect_documents: %d parsed documents", len(documents))
     return documents
 
@@ -122,7 +135,7 @@ def build_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[Summar
 
     rows: list[SummaryRow] = []
     for document in documents:
-        supplier_name = _extract_supplier_name(document.accounting_supplier_party.party)
+        supplier_name = extract_supplier_name(document.accounting_supplier_party.party)
         amount = document.legal_monetary_total.payable_amount
         if isinstance(document, CreditNote):
             amount *= -1.0
@@ -164,25 +177,7 @@ def render_summary(rows: Iterable[SummaryRow], *, console: Console | None = None
             row.supplier,
             row.invoice_date.isoformat(),
             row.due_date.isoformat() if row.due_date else "N/A",
-            _format_amount(row.payable_amount, row.currency),
+            format_currency(row.payable_amount, row.currency),
         )
 
     target_console.print(table)
-
-
-def _format_amount(value: float, currency: str) -> str:
-    return f"{value:,.2f} {currency}"
-
-
-def _extract_supplier_name(party: Party) -> str:
-    details = party.get_display_str()
-    name = details.get("name") or details.get("formatted") or "Unknown"
-    return name.strip()
-
-
-def _to_date(value: date | datetime | None) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    return value
