@@ -91,4 +91,3 @@ def parse_and_filter_documents(
         results.append(doc)
 
     return results
-

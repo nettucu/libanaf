@@ -86,7 +86,7 @@
         "LIBANAF_LOGGING_CONFIG_FILE": "${workspaceFolder}/conf/logging_py.json",
         "LIBANAF_SECRETS_PATH": "${workspaceFolder}/conf/secrets"
       },
-      "args": ["invoices", "prod-summary", "-i", "BTER1006066"],
+      "args": ["invoices", "prod-summary", "-i", "0166"],
       "justMyCode": false
     }
   ]
