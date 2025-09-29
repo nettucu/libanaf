@@ -83,4 +83,4 @@ def extract_supplier_name(party: Party) -> str:
 def format_currency(value: Decimal | float | int, currency: str) -> str:
     """Format numeric values with a currency suffix."""
 
-    return f"{value:,.2f} {currency}"
+    return f"{value:,.2f}"  # {currency}"

@@ -74,6 +74,20 @@
       },
       "args": ["invoices", "summary", "-s", "hd dental repair"],
       "justMyCode": false
+    },
+    {
+      "name": "Debug prod-summary",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/main.py",
+      "console": "integratedTerminal",
+      "env": {
+        "LIBANAF_CONFIG_FILE": "${workspaceFolder}/conf/config.toml",
+        "LIBANAF_LOGGING_CONFIG_FILE": "${workspaceFolder}/conf/logging_py.json",
+        "LIBANAF_SECRETS_PATH": "${workspaceFolder}/conf/secrets"
+      },
+      "args": ["invoices", "prod-summary", "-i", "BTER1006066"],
+      "justMyCode": false
     }
   ]
 }

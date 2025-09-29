@@ -26,7 +26,8 @@
   - U.M. is the unitCode from the InvoicedQuantity
   - Price is the price per item
   - Value is the total value for the InvoiceLine
-  - Discount Rate and Value depend on whether there is a discount only at document level or also at product level, if at document level then it needs to be properly divided between the InvoiceLines
+  - Discount Rate and/or Value depend on whether there is a discount only at document level or also at product level, if at document level then it needs to be proportionally divided between the InvoiceLines
+  - Discount can be wrongly entered in the XML file (see below example), the amount is negative even though ChargeIndicator is false (the amount should be positive in the XML) and only be negative in calculations
   - In the end the sum of Total Per line **MUST** be equal to Total Value (Payable)
 
 ## Documentation
@@ -41,6 +42,50 @@ tests/fixtues/invoice-4249721031_470534743.xml
 ## Other files
 
 - See invoices/show and invoices/summary for some examples of files search, rich usage and calculations
+
+## Example of InvoiceLine and calculations
+
+see `tests/fixtures/invoice-discounts-terra-dent-5770358448_5485396796.xml`
+
+```XML
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">10.0000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">83.20</cbc:LineExtensionAmount>
+    <cac:AllowanceCharge>
+      <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+      <cbc:AllowanceChargeReason>discount la document</cbc:AllowanceChargeReason>
+      <cbc:Amount currencyID="RON">-8.32</cbc:Amount>
+    </cac:AllowanceCharge>
+    <cac:Item>
+      <cbc:Name>PUDRA PROPHYPEARLS ORANGE KAVO PLIC 15G</cbc:Name>
+      <cac:SellersItemIdentification>
+        <cbc:ID>1.010.1830</cbc:ID>
+      </cac:SellersItemIdentification>
+      <cac:CommodityClassification>
+        <cbc:ItemClassificationCode listID="TSP">33061000</cbc:ItemClassificationCode>
+      </cac:CommodityClassification>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>21.00</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">8.32000000</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+```
+
+Item: PUDRA PROPHYPEARLS ORANGE KAVO PLIC 15G
+Gross Value: 10.0000 (Quantity) × 8.32 (Price) = 83.20 RON
+Discount: 8.32 RON
+Value Without Tax (Taxable Amount): 83.20−8.32=74.88 RON
+VAT Amount: 74.88×21.00%=15.72 RON
+Total Value With Tax: 74.88+15.72=90.60 RON
 
 ## Implementation Steps
 

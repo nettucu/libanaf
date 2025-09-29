@@ -10,11 +10,11 @@ class Filter(str, Enum):
 
 UNIT_CODES = {
     "ANN": "Year",
-    "C62": "Unit (general purpose)",
+    "C62": "BUC (general purpose)",
     "DAY": "Day",
     "EA": "Each",
     "GJ": "Gigajoule",
-    "H87": "Piece",
+    "H87": "BUC",
     "HUR": "Hour",
     "IE": "Person",
     "KGM": "Kilogram",
@@ -32,7 +32,7 @@ UNIT_CODES = {
     "X5M": "Actual settlement weight",
     "XBE": "Bundle",
     "XBO": "Bottle",
-    "XBX": "Box",
+    "XBX": "Cutie",
     "XCT": "Carton",
     "XEC": "Each per month",
     "XPO": "Pallet (ISO 0.8m x 1.2m)",

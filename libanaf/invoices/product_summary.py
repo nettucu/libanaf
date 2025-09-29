@@ -80,9 +80,7 @@ def summarize_products(
                 "[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
             )
         elif exc.code == "start_after_end":
-            product_console.print(
-                "[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]"
-            )
+            product_console.print("[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
         else:  # pragma: no cover - defensive branch
             product_console.print("[bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
@@ -142,7 +140,7 @@ def build_product_summary_rows(documents: Sequence[Invoice | CreditNote]) -> lis
     for document in documents:
         rows.extend(_build_rows_for_document(document))
 
-    rows.sort(key=lambda row: (row.invoice_date, row.document_number, row.product))
+    # rows.sort(key=lambda row: (row.invoice_date, row.document_number, row.product))
     return rows
 
 
@@ -159,7 +157,7 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
     table.add_column("Supplier", style="green")
     table.add_column("Invoice Number", style="cyan")
     table.add_column("Invoice Date", style="white")
-    table.add_column("Total Value (Payable)", justify="right", style="magenta")
+    table.add_column("Total Value\n(Payable)", justify="right", style="magenta")
     table.add_column("Product", style="white")
     table.add_column("Product Code", style="white")
     table.add_column("Quantity", justify="right", style="yellow")
@@ -186,7 +184,7 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
             format_currency(row.value, row.currency),
             f"{row.vat_rate:.2f}",
             format_currency(row.vat_value, row.currency),
-            f"{row.discount_rate:.2f}",
+            f"{abs(row.discount_rate):.2f}%",
             format_currency(row.discount_value, row.currency),
             format_currency(row.total_per_line, row.currency),
         )
@@ -258,10 +256,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
     totals_sum = sum(row.total_per_line for row in rows)
     expected_total = total_payable_signed
     if totals_sum != expected_total:
-        logger.warning(
-            f"product-summary: rounding mismatch for {document.id} "
-            f"({totals_sum} vs {expected_total})"
-        )
+        logger.warning(f"product-summary: rounding mismatch for {document.id} ({totals_sum} vs {expected_total})")
 
     return rows
 
@@ -421,7 +416,7 @@ def _get_tax_exclusive_amount(document: Invoice | CreditNote) -> Decimal:
 def _format_price(amount: Decimal | None, currency: str) -> str:
     if amount is None:
         return "-"
-    return f"{amount:.4f} {currency}"
+    return f"{amount:.2f}"  # {currency}"
 
 
 def _format_unit(unit_code: str | None) -> str:
