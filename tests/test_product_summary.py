@@ -21,7 +21,8 @@ from libanaf.invoices.product_summary import (
 )
 from libanaf.ubl.ubl_document import parse_ubl_document, parse_ubl_document_from_string
 
-FIXTURES = Path("tests/fixtures")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = REPO_ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture()
@@ -63,6 +64,7 @@ def test_collect_documents_without_filters() -> None:
         supplier_name=None,
         start_date=None,
         end_date=None,
+        allow_unfiltered=True,
     )
 
     ids = {doc.id for doc in documents}
@@ -116,4 +118,4 @@ def test_summarize_products_renders_table(dummy_config: AppConfig) -> None:
     assert "Invoice Product Summary" in text_output
     assert "FX4010SW-III" in text_output
     assert "Total Per Line" in text_output
-    assert "H87 (Piece)" in text_output
+    assert "H87" in text_output

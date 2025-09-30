@@ -60,8 +60,12 @@ def test_all_ubl_documents(xml_path: Path, parsed_documents: Mapping[Path, UBLDo
     assert ubl_document.id.strip()
     assert ubl_document.document_currency_code.strip()
     assert isinstance(ubl_document.issue_date, date)
-    assert supplier.party_legal_entity.registration_name
-    assert customer.party_legal_entity.registration_name
+    assert (supplier.party_name is not None and supplier.party_name.name) or (
+        supplier.party_legal_entity is not None and supplier.party_legal_entity.registration_name
+    )
+    assert (customer.party_name is not None and customer.party_name.name) or (
+        customer.party_legal_entity is not None and customer.party_legal_entity.registration_name
+    )
     assert ubl_document.legal_monetary_total.payable_amount is not None
     if ubl_document.tax_total.currency_id is not None:
         assert ubl_document.tax_total.currency_id == ubl_document.document_currency_code

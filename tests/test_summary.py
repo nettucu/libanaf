@@ -20,6 +20,9 @@ from libanaf.invoices.summary import (
     summarize_invoices,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+FIXTURES = REPO_ROOT / "tests" / "fixtures"
+
 
 @pytest.fixture()
 def dummy_config(tmp_path: Path) -> AppConfig:
@@ -54,9 +57,8 @@ def dummy_config(tmp_path: Path) -> AppConfig:
 
 
 def test_collect_documents_filters_by_supplier() -> None:
-    fixtures = Path("tests/fixtures")
     docs = collect_documents(
-        fixtures,
+        FIXTURES,
         invoice_number=None,
         supplier_name="NASTIMED SERV SRL",
         start_date=None,
@@ -68,9 +70,8 @@ def test_collect_documents_filters_by_supplier() -> None:
 
 
 def test_build_summary_rows_orders_and_signs() -> None:
-    fixtures = Path("tests/fixtures")
     docs = collect_documents(
-        fixtures,
+        FIXTURES,
         invoice_number=None,
         supplier_name="NASTIMED SERV SRL",
         start_date=None,

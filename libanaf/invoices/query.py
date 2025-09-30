@@ -43,15 +43,17 @@ def _parse_and_filter_file(
     if invoice_number and invoice_number.lower() not in doc.id.lower():
         return None
     if supplier_name:
+        supplier = doc.accounting_supplier_party.party
         if (
-            doc.accounting_supplier_party.party.party_name.name is not None
-            and supplier_name.lower() not in doc.accounting_supplier_party.party.party_name.name.lower()
+            supplier.party_name is not None
+            and supplier.party_name.name is not None
+            and supplier_name.lower() not in supplier.party_name.name.lower()
         ):
             return None
         if (
-            doc.accounting_supplier_party.party.party_legal_entity.registration_name is not None
-            and supplier_name.lower()
-            not in doc.accounting_supplier_party.party.party_legal_entity.registration_name.lower()
+            supplier.party_legal_entity is not None
+            and supplier.party_legal_entity.registration_name is not None
+            and supplier_name.lower() not in supplier.party_legal_entity.registration_name.lower()
         ):
             return None
 
@@ -64,7 +66,7 @@ def collect_documents(
     supplier_name: str | None,
     start_date: DateLike,
     end_date: DateLike,
-    allow_unfiltered: bool,
+    allow_unfiltered: bool = True,
 ) -> list[DocumentType]:
     """
     Collect and parse documents that satisfy the supplied filters in parallel.
