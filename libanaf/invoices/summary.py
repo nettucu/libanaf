@@ -21,11 +21,11 @@ from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
 from .common import (
     DateValidationError,
-    collect_documents as shared_collect_documents,
     ensure_date_range,
     extract_supplier_name,
     format_currency,
 )
+from .query import collect_documents
 
 logger = logging.getLogger(__name__)
 DEFAULT_CONSOLE = Console()
@@ -59,7 +59,7 @@ def summarize_invoices(
 
     if not any([invoice_number, supplier_name]):
         summary_console.print(
-            "[bold red]Error: provide at least one filter such as --invoice-number or --supplier-name.[/bold red]"
+            "❌ [bold red]Error: provide at least one filter such as --invoice-number or --supplier-name.[/bold red]"
         )
         raise typer.Exit(code=1)
 
@@ -71,9 +71,7 @@ def summarize_invoices(
                 "[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
             )
         elif exc.code == "start_after_end":
-            summary_console.print(
-                "[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]"
-            )
+            summary_console.print("[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
         else:  # pragma: no cover - defensive branch
             summary_console.print("[bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
@@ -82,8 +80,17 @@ def summarize_invoices(
     dlds_dir = app_config.storage.download_dir
     logger.debug("summary: using download dir %s", dlds_dir)
 
+    search_dir = Path(dlds_dir).resolve()
+    logger.debug(
+        "summary collect_documents: dir=%s invoice_number=%s supplier_name=%s start_date=%s end_date=%s",
+        search_dir,
+        invoice_number,
+        supplier_name,
+        start_date,
+        end_date,
+    )
     documents = collect_documents(
-        dlds_dir,
+        search_dir,
         invoice_number=invoice_number,
         supplier_name=supplier_name,
         start_date=start,
@@ -96,38 +103,6 @@ def summarize_invoices(
 
     rows = build_summary_rows(documents)
     render_summary(rows, console=summary_console)
-
-
-def collect_documents(
-    directory: Path | str,
-    *,
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: date | None,
-    end_date: date | None,
-) -> list[Invoice | CreditNote]:
-    """Collect and parse documents that satisfy the supplied filters."""
-
-    search_dir = Path(directory)
-    logger.debug(
-        "summary collect_documents: dir=%s invoice_number=%s supplier_name=%s start_date=%s end_date=%s",
-        search_dir,
-        invoice_number,
-        supplier_name,
-        start_date,
-        end_date,
-    )
-
-    documents = shared_collect_documents(
-        search_dir,
-        invoice_number=invoice_number,
-        supplier_name=supplier_name,
-        start_date=start_date,
-        end_date=end_date,
-        allow_unfiltered=False,
-    )
-    logger.debug("summary collect_documents: %d parsed documents", len(documents))
-    return documents
 
 
 def build_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[SummaryRow]:

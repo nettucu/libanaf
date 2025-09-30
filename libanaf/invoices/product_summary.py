@@ -11,6 +11,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
+import math
 from pathlib import Path
 from collections.abc import Iterable, Sequence
 
@@ -25,11 +26,11 @@ from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
 from .common import (
     DateValidationError,
-    collect_documents as shared_collect_documents,
     ensure_date_range,
     extract_supplier_name,
     format_currency,
 )
+from .query import collect_documents
 
 logger = logging.getLogger(__name__)
 
@@ -77,59 +78,40 @@ def summarize_products(
     except DateValidationError as exc:
         if exc.code == "both_required":
             product_console.print(
-                "[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
+                "❌ [bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
             )
         elif exc.code == "start_after_end":
-            product_console.print("[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
+            product_console.print("❌ [bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
         else:  # pragma: no cover - defensive branch
-            product_console.print("[bold red]Error: invalid date range.[/bold red]")
+            product_console.print("❌ [bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
     app_config = config or get_config()
     dlds_dir = app_config.storage.download_dir
     logger.debug(
-        f"product-summary: using download dir {dlds_dir} "
+        f"product-summary: collect_documents: dir {dlds_dir} "
         f"invoice_number={invoice_number} supplier_name={supplier_name} start={start} end={end}"
     )
 
+    search_dir = Path(dlds_dir).resolve()
     documents = collect_documents(
-        dlds_dir,
+        search_dir,
         invoice_number=invoice_number,
         supplier_name=supplier_name,
         start_date=start,
         end_date=end,
+        allow_unfiltered=True,
     )
 
     if not documents:
         product_console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
         return
 
+    logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
+
     rows = build_product_summary_rows(documents)
     render_product_summary(rows, console=product_console)
 
-
-def collect_documents(
-    directory: Path | str,
-    *,
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: date | None,
-    end_date: date | None,
-) -> list[Invoice | CreditNote]:
-    """Collect and parse documents that satisfy the supplied filters."""
-
-    search_dir = Path(directory)
-    logger.debug(f"product-summary collect_documents: dir={search_dir}")
-
-    documents = shared_collect_documents(
-        search_dir,
-        invoice_number=invoice_number,
-        supplier_name=supplier_name,
-        start_date=start_date,
-        end_date=end_date,
-        allow_unfiltered=True,
-    )
-    logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
     return documents
 
 
@@ -255,7 +237,8 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
 
     totals_sum = sum(row.total_per_line for row in rows)
     expected_total = total_payable_signed
-    if totals_sum != expected_total:
+    tolerance = Decimal("0.05")
+    if not math.isclose(totals_sum, expected_total, rel_tol=tolerance):
         logger.warning(f"product-summary: rounding mismatch for {document.id} ({totals_sum} vs {expected_total})")
 
     return rows

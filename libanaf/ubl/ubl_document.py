@@ -156,7 +156,27 @@ def parse_ubl_document(xml_file: str | Path) -> UBLDocument:
     if not xml_file.exists():
         raise FileNotFoundError(f"File {xml_file} does not exist")
 
-    root = etree.parse(str(xml_file)).getroot()
+    with xml_file.open("r", encoding="utf-8") as file:
+        return parse_ubl_document_from_string(file.read(), xml_file)
+
+
+def parse_ubl_document_from_string(xml_string: str, xml_file: Path | None = None) -> UBLDocument:
+    """Parse a UBL XML string into a typed document model.
+
+    Supports the following UBL document types based on the XML root:
+    "Invoice" and "CreditNote".
+
+    Args:
+        xml_string: The UBL XML content as a string.
+        xml_file: The original file path, for logging purposes.
+
+    Returns:
+        UBLDocument: A parsed `Invoice` or `CreditNote` instance.
+
+    Raises:
+        ValueError: If the document type is not supported.
+    """
+    root = etree.fromstring(xml_string.encode("utf-8"))
     local_name = etree.QName(root).localname
 
     if local_name != "Invoice" and local_name != "CreditNote":
@@ -169,13 +189,11 @@ def parse_ubl_document(xml_file: str | Path) -> UBLDocument:
     if local_name == "Invoice":
         from libanaf.ubl.invoice import Invoice
 
-        with xml_file.open("r", encoding="utf-8") as file:
-            ubl_document = Invoice.from_xml(bytes(file.read(), encoding="utf-8"))
+        ubl_document = Invoice.from_xml(xml_string.encode("utf-8"))
     elif local_name == "CreditNote":
         from libanaf.ubl.credit_note import CreditNote
 
-        with xml_file.open("r", encoding="utf-8") as file:
-            ubl_document = CreditNote.from_xml(bytes(file.read(), encoding="utf-8"))
+        ubl_document = CreditNote.from_xml(xml_string.encode("utf-8"))
 
     logger.debug(f"Successfully parsed UBL document: {xml_file}")
     return ubl_document  # pyright: ignore

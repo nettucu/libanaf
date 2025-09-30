@@ -19,7 +19,7 @@ from libanaf.invoices.product_summary import (
     collect_documents,
     summarize_products,
 )
-from libanaf.ubl.ubl_document import parse_ubl_document
+from libanaf.ubl.ubl_document import parse_ubl_document, parse_ubl_document_from_string
 
 FIXTURES = Path("tests/fixtures")
 
@@ -71,7 +71,8 @@ def test_collect_documents_without_filters() -> None:
 
 
 def test_build_rows_distribute_document_discounts() -> None:
-    document = parse_ubl_document(FIXTURES / "invoice-4249721031_4705345743.xml")
+    xml_content = (FIXTURES / "invoice-discounts-gursk-4249721031_4705345743.xml").read_text()
+    document = parse_ubl_document_from_string(xml_content)
     rows = build_product_summary_rows([document])
 
     totals = sum(row.total_per_line for row in rows)
@@ -103,7 +104,7 @@ def test_build_rows_handles_credit_note() -> None:
 def test_summarize_products_renders_table(dummy_config: AppConfig) -> None:
     console = Console(record=True, width=320)
     summarize_products(
-        invoice_number="FIMCGB",
+        invoice_number="FIMCGB8202",
         supplier_name=None,
         start_date=datetime(2025, 2, 1),
         end_date=datetime(2025, 2, 6),

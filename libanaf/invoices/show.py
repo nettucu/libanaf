@@ -7,6 +7,7 @@ human-readable tables using Rich.
 
 import logging
 from datetime import date, datetime
+from pathlib import Path
 from typing import cast
 
 import typer
@@ -19,21 +20,14 @@ from rich.text import Text
 from rich.align import Align
 
 from ..config import get_config, AppConfig
-from .query import gather_candidate_files, parse_and_filter_documents
+from .query import collect_documents
 from ..ubl.cac import Party, CreditNoteLine, InvoiceLine
 from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
+from .common import DateValidationError, ensure_date_range
 
 logger = logging.getLogger(__name__)
 console = Console()
-
-
-def _coerce_to_date(value: date | datetime | None) -> date | None:
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        return value.date()
-    return value
 
 
 def show_invoices(
@@ -59,25 +53,41 @@ def show_invoices(
     # 1) Validate at least one filter
     if not any([invoice_number, supplier_name, (start_date and end_date)]):
         console.print(
-            "[bold red]Error: You must specify at least one filter, such as --invoice-number, --supplier-name, or both --start-date and --end-date.[/bold red]"
+            "❌ [bold red]Error: You must specify at least one filter, such as --invoice-number, --supplier-name, or both --start-date and --end-date.[/bold red]"
         )
         raise typer.Exit(code=1)
 
-    start_date_obj = _coerce_to_date(start_date)
-    end_date_obj = _coerce_to_date(end_date)
+    try:
+        start, end = ensure_date_range(start_date, end_date)
+    except DateValidationError as exc:
+        if exc.code == "both_required":
+            console.print("❌ [bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]")
+        elif exc.code == "start_after_end":
+            console.print("❌ [bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
+        else:  # pragma: no cover - defensive branch
+            console.print("❌ [bold red]Error: invalid date range.[/bold red]")
+        raise typer.Exit(code=1)
 
     config: AppConfig = get_config()
     dlds_dir = config.storage.download_dir
 
-    # 2) Gather candidate files using pure Python scan (or fallback if only date range is used)
-    candidate_files = gather_candidate_files(dlds_dir, invoice_number, supplier_name, start_date_obj, end_date_obj)
-    logger.debug(f"Found {len(candidate_files)}")
-    logger.debug(candidate_files)
+    search_dir = Path(dlds_dir).resolve()
+    logger.debug(f"product-summary collect_documents: dir={search_dir}")
+    documents = collect_documents(
+        search_dir,
+        invoice_number=invoice_number,
+        supplier_name=supplier_name,
+        start_date=start,
+        end_date=end,
+        allow_unfiltered=False,
+    )
 
-    # 3) Parse and filter the candidate files (double-check date range, etc.)
-    documents = parse_and_filter_documents(candidate_files, start_date_obj, end_date_obj)
+    if not documents:
+        console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
+        return
 
-    # 4) Display results
+    logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
+
     # display_documents(documents)
     display_documents_pdf_style(documents)
 

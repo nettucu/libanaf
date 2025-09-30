@@ -4,12 +4,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from pathlib import Path
 
 from ..ubl.cac import Party
 from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
-from .query import gather_candidate_files, parse_and_filter_documents
 
 DocumentType = Invoice | CreditNote
 
@@ -47,29 +45,6 @@ def ensure_date_range(
         raise DateValidationError("start_after_end")
 
     return start_date, end_date
-
-
-def collect_documents(
-    directory: Path | str,
-    *,
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: date | None,
-    end_date: date | None,
-    allow_unfiltered: bool,
-) -> list[DocumentType]:
-    """Collect and parse documents that satisfy the supplied filters."""
-
-    search_dir = Path(directory)
-
-    if invoice_number or supplier_name:
-        candidate_files = gather_candidate_files(search_dir, invoice_number, supplier_name, start_date, end_date)
-    elif allow_unfiltered:
-        candidate_files = set(search_dir.glob("*.xml"))
-    else:
-        return []
-
-    return parse_and_filter_documents(candidate_files, start_date, end_date)
 
 
 def extract_supplier_name(party: Party) -> str:

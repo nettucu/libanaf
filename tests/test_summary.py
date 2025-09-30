@@ -58,7 +58,7 @@ def test_collect_documents_filters_by_supplier() -> None:
     docs = collect_documents(
         fixtures,
         invoice_number=None,
-        supplier_name="NASTIMED",
+        supplier_name="NASTIMED SERV SRL",
         start_date=None,
         end_date=None,
     )
@@ -72,7 +72,7 @@ def test_build_summary_rows_orders_and_signs() -> None:
     docs = collect_documents(
         fixtures,
         invoice_number=None,
-        supplier_name="NASTIMED",
+        supplier_name="NASTIMED SERV SRL",
         start_date=None,
         end_date=None,
     )
@@ -105,7 +105,7 @@ def test_summarize_invoices_filters_by_date(dummy_config: AppConfig) -> None:
     console = Console(record=True, width=200)
     summarize_invoices(
         invoice_number=None,
-        supplier_name="NASTIMED",
+        supplier_name="NASTIMED SERV SRL",
         start_date=datetime(2025, 2, 1),
         end_date=datetime(2025, 2, 12),
         config=dummy_config,
