@@ -27,38 +27,24 @@ def invoices_list(
     ] = 60,
     cif: Annotated[
         int | None,
-        typer.Argument(
-            help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"
-        ),
+        typer.Argument(help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"),
     ] = 19507820,
     filter: Annotated[
         Filter | None,
-        typer.Option(
-            help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"
-        ),
+        typer.Option(help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"),
     ] = Filter.P,
 ) -> None:
     """Get the list of available invoices."""
-    typer.echo(
-        f"Starting invoice list for the last {days} days for CIF: {cif} and filter {filter}"
-    )
+    typer.echo(f"Starting invoice list for the last {days} days for CIF: {cif} and filter {filter}")
     list_invoices(days, cif, filter)
 
 
 @app.command(name="show")
 def show(
-    invoice_number: Annotated[
-        str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")
-    ] = None,
-    supplier_name: Annotated[
-        str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")
-    ] = None,
-    start_date: Annotated[
-        datetime | None, typer.Option("--start-date", "-sd", help="Start Date")
-    ] = None,
-    end_date: Annotated[
-        datetime | None, typer.Option("--end-date", "-ed", help="End Date")
-    ] = None,
+    invoice_number: Annotated[str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
+    supplier_name: Annotated[str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
+    start_date: Annotated[datetime | None, typer.Option("--start-date", "-sd", help="Start Date")] = None,
+    end_date: Annotated[datetime | None, typer.Option("--end-date", "-ed", help="End Date")] = None,
 ):
     """
     Shows all matching invoices. Filtering options:
@@ -75,18 +61,10 @@ def show(
 
 @app.command(name="summary")
 def summary(
-    invoice_number: Annotated[
-        str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")
-    ] = None,
-    supplier_name: Annotated[
-        str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")
-    ] = None,
-    start_date: Annotated[
-        datetime | None, typer.Option("--start-date", "-sd", help="Start Date")
-    ] = None,
-    end_date: Annotated[
-        datetime | None, typer.Option("--end-date", "-ed", help="End Date")
-    ] = None,
+    invoice_number: Annotated[str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
+    supplier_name: Annotated[str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
+    start_date: Annotated[datetime | None, typer.Option("--start-date", "-sd", help="Start Date")] = None,
+    end_date: Annotated[datetime | None, typer.Option("--end-date", "-ed", help="End Date")] = None,
 ):
     """Show a tabular summary of invoices/credit notes that match wildcard filters."""
 
@@ -99,18 +77,10 @@ def summary(
 
 @app.command(name="prod-summary")
 def prod_summary(
-    invoice_number: Annotated[
-        str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")
-    ] = None,
-    supplier_name: Annotated[
-        str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")
-    ] = None,
-    start_date: Annotated[
-        datetime | None, typer.Option("--start-date", "-sd", help="Start Date")
-    ] = None,
-    end_date: Annotated[
-        datetime | None, typer.Option("--end-date", "-ed", help="End Date")
-    ] = None,
+    invoice_number: Annotated[str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
+    supplier_name: Annotated[str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
+    start_date: Annotated[datetime | None, typer.Option("--start-date", "-sd", help="Start Date")] = None,
+    end_date: Annotated[datetime | None, typer.Option("--end-date", "-ed", help="End Date")] = None,
 ) -> None:
     """Show a product-level summary for invoices or credit notes."""
 
@@ -118,7 +88,7 @@ def prod_summary(
         "Generating product summary with params: "
         f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
     )
-    summarize_products(invoice_number, supplier_name, start_date, end_date)
+    summarize_products(invoice_number, supplier_name, start_date, end_date, render_output=True)
 
 
 @app.command(name="download")
@@ -131,23 +101,17 @@ def invoices_download(
     ] = 60,
     cif: Annotated[
         int | None,
-        typer.Argument(
-            help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"
-        ),
+        typer.Argument(help="CIF-ul (numeric) pentru care se doreste sa se obtina lista de mesaje disponibile"),
     ] = 19507820,
     filter: Annotated[
         Filter | None,
-        typer.Option(
-            help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"
-        ),
+        typer.Option(help="Parametru folosit pentru filtrarea mesajelor. Valorile acceptate sunt: E, T, P, R"),
     ] = Filter.P,
 ) -> None:
     """
     Download missing invoices and store them locally.
     """
-    typer.echo(
-        f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}"
-    )
+    typer.echo(f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}")
     download(days, cif, filter)
 
 

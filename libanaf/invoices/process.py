@@ -7,7 +7,7 @@ from pathlib import Path
 import aiofiles
 import typer
 from httpx import AsyncClient, HTTPStatusError, ReadTimeout, Response
-from lxml.etree import XMLSyntaxError
+from lxml import etree
 from pydantic import ValidationError
 from pydantic_xml import ParsingError
 from rich.console import Console
@@ -44,7 +44,7 @@ async def get_pdf_path(xml_path: Path) -> Path:
 
     except ValidationError as e:
         logger.error(f"Invoice {xml_path}: {e}", exc_info=e)
-    except XMLSyntaxError as e:
+    except etree.XMLSyntaxError as e:
         logger.error(f"XML Syntax error {xml_path}: {e}", exc_info=e)
     except ParsingError as e:
         logger.error(f"XML Parse error {xml_path}: {e}", exc_info=e)
@@ -163,7 +163,34 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
         console.print(f"[bold red]An error occurred:[/bold red] {e}")
 
 
+def _format_xml_file(xml_path: Path) -> None:
+    """Pretty-print an XML file using lxml similar to ``xmllint --format``.
+
+    Args:
+        xml_path (Path): Destination XML file that requires formatting.
+    """
+
+    parser = etree.XMLParser(remove_blank_text=True)
+
+    try:
+        tree = etree.parse(str(xml_path), parser=parser)
+        tree.write(
+            str(xml_path),
+            pretty_print=True,
+            encoding="utf-8",
+            xml_declaration=True,
+        )
+    except (etree.XMLSyntaxError, OSError) as err:
+        logger.warning(f"Failed to format XML file {xml_path}: {err}")
+
+
 def unzip_invoices(download_dir: Path) -> None:
+    """Extract invoices and format any XML payloads located in the download directory.
+
+    Args:
+        download_dir (Path): Directory containing raw invoice archives.
+    """
+
     for zip_file in download_dir.glob("*.zip"):
         try:
             with zipfile.ZipFile(zip_file, "r") as zip_handle:
@@ -180,6 +207,8 @@ def unzip_invoices(download_dir: Path) -> None:
                         )
                         extracted = Path(zip_handle.extract(member=member_info, path=download_dir))
                         extracted.rename(new_dest)
+                        if new_dest.suffix.lower() == ".xml":
+                            _format_xml_file(new_dest)
         except zipfile.BadZipFile as e:
             # the zip file is malformed
             logger.error(f"Zip File {zip_file} is malformed: {e}. Moving on ...")

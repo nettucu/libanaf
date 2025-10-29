@@ -65,10 +65,11 @@ def summarize_products(
     supplier_name: str | None,
     start_date: date | datetime | None,
     end_date: date | datetime | None,
+    render_output: bool = True,
     *,
     config: AppConfig | None = None,
     output: Console | None = None,
-) -> None:
+) -> list[ProductSummaryRow] | None:
     """Render a Rich table with product-level figures for matching documents."""
 
     product_console = output or DEFAULT_CONSOLE
@@ -93,6 +94,9 @@ def summarize_products(
         f"invoice_number={invoice_number} supplier_name={supplier_name} start={start} end={end}"
     )
 
+    # TODO: If no parameters are passed to the function, then the entire universe of XML files is processed.
+    # This can be slow if not using some form of either indexing or caching. collec_documents is multi threaded
+    # For now, we allow this only for debugging or exploratory use cases.
     search_dir = Path(dlds_dir).resolve()
     documents = collect_documents(
         search_dir,
@@ -105,14 +109,15 @@ def summarize_products(
 
     if not documents:
         product_console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
-        return
+        return None
 
     logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
 
     rows = build_product_summary_rows(documents)
-    render_product_summary(rows, console=product_console)
+    if render_output:
+        render_product_summary(rows, console=product_console)
 
-    return documents
+    return rows
 
 
 def build_product_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[ProductSummaryRow]:

@@ -77,7 +77,7 @@ def collect_documents(
     results: list[DocumentType] = []
     xml_files = sorted(list(dlds_dir.glob("*.xml")))
 
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         future_to_doc = {
             executor.submit(
                 _parse_and_filter_file,
