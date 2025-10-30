@@ -21,7 +21,7 @@ from rich.table import Table
 
 from ..config import AppConfig, get_config
 from ..types import UNIT_CODES
-from ..ubl.cac import AllowanceCharge, CreditNoteLine, InvoiceLine
+from ..ubl.cac import AllowanceCharge, CreditNoteLine, InvoiceLine, Party
 from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
 from .common import (
@@ -42,6 +42,7 @@ DEFAULT_CONSOLE = Console()
 class ProductSummaryRow:
     """Aggregated information for a single invoice or credit-note line."""
 
+    company_id: str
     supplier: str
     document_number: str
     invoice_date: date
@@ -181,8 +182,10 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
 
 def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSummaryRow]:
     currency = getattr(document, "document_currency_code", "RON")
+    company_id = document.accounting_supplier_party.party.company_id
     supplier_name = extract_supplier_name(document.accounting_supplier_party.party)
     total_payable = Decimal(str(document.legal_monetary_total.payable_amount))
+    prepaid_amount = Decimal(document.legal_monetary_total.prepaid_amount)
     tax_exclusive = _get_tax_exclusive_amount(document)
     tax_total = Decimal(str(document.tax_total.tax_amount))
     sign = Decimal("-1") if isinstance(document, CreditNote) else Decimal("1")
@@ -221,6 +224,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
         discount_value = entry.total_discount.quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP)
         rows.append(
             ProductSummaryRow(
+                company_id=company_id,
                 supplier=supplier_name,
                 document_number=document.id,
                 invoice_date=document.issue_date,
@@ -241,7 +245,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
         )
 
     totals_sum = sum(row.total_per_line for row in rows)
-    expected_total = total_payable_signed
+    expected_total = total_payable_signed + Decimal(prepaid_amount).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP)
     tolerance = Decimal("0.05")
     if not math.isclose(totals_sum, expected_total, rel_tol=tolerance):
         logger.warning(f"product-summary: rounding mismatch for {document.id} ({totals_sum} vs {expected_total})")

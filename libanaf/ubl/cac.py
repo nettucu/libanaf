@@ -90,6 +90,17 @@ class Party(BaseXmlModel, tag="Party", search_mode="unordered", ns="cac", nsmap=
     party_legal_entity: PartyLegalEntity
     contact: Optional[Contact] = None
 
+    @property
+    def company_id(self) -> str:
+        if self.party_tax_scheme and self.party_tax_scheme.company_id:
+            return self.party_tax_scheme.company_id
+        if self.party_legal_entity and self.party_legal_entity.company_id:
+            return self.party_legal_entity.company_id
+        if self.party_identification and self.party_identification.id:
+            return self.party_identification.id
+
+        return "N/A"
+
     def get_display_str(self) -> dict[str, str]:
         """
         Returns a string similar to:
