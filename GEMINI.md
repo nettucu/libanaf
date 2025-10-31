@@ -19,7 +19,7 @@ This document provides essential context for AI models interacting with this pro
     *   `lxml`: Used for XML schema validation.
     *   `typer`: Powers the command-line interface.
     *   `rich`: For creating formatted and visually rich CLI output.
-* **Package Manager(s):** `pip` is the standard package manager. The `README.md` also mentions `uv` as a faster alternative for installation and environment management.
+* **Package Manager(s):** `uv` is used to manage the packages
 
 ## 3. Architectural Patterns
 
@@ -52,13 +52,13 @@ This document provides essential context for AI models interacting with this pro
 ## 6. Development & Testing Workflow
 
 * **Local Development Environment:** To set up a local development environment, install the project in editable mode with development dependencies using `uv pip install -e .[dev]`.
-* **Testing:** Tests are written using `pytest` and executed by running `uv run pytest -q`. Test files are located in the `/tests` directory. New code should have corresponding test coverage, aiming for ≥85%.
+* **Testing:** Tests are written using `pytest` and executed by running `uv run --with pytest pytest -q`. Test files are located in the `/tests` directory. New code should have corresponding test coverage, aiming for ≥85%.
 * **CI/CD Process:** There is no automated CI/CD process defined in the repository. All checks (linting, testing) are expected to be run manually before committing.
 
 ## 7. Specific Instructions for AI Collaboration
 
 * **Contribution Guidelines:** The `AGENTS.md` file is the definitive guide. Key rules include:
-    *   All code must pass `ruff check .` and all tests (`uv run pytest -q`).
+    *   All code must pass `ruff check .` and all tests (`uv run --with pytest pytest -q`).
     *   New code in a module should achieve at least 85% test coverage.
     *   Functions must have Google or NumPy style docstrings and full type hints.
     *   Use f-strings for string formatting.

@@ -35,7 +35,7 @@ libanaf/
 
 ## 3. Data Flow
 
-**Example: Invoice Upload**
+### **Example: Invoice Upload**
 
 1. CLI calls `invoice upload` command in `cli.py`
 2. Loads config + token from `config.py` / `auth.py`
@@ -62,6 +62,7 @@ libanaf/
 - `authlib` — OAuth2 flows
 - `pydantic` / `pydantic-xml` — typed models and XML parsing
 - `lxml` — UBL schema validation
+- `typer` - CLI manager
 
 ---
 

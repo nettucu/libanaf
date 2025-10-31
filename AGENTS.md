@@ -15,7 +15,7 @@ AI agents can:
 - Update documentation and architecture diagrams
 - Suggest optimizations or alternative designs
 - Automate repetitive coding tasks (formatting, type hints, docstrings)
-- Create or update YAML briefs in `ai/briefs/`
+- Create or update markdown briefs in `ai/briefs/`
 
 AI agents **must not**:
 
@@ -42,7 +42,7 @@ Agents should use the following **primary context files** before making changes:
 - `README.md` — project overview, quickstart
 - `ARCHITECTURE.md` — module map and data flows
 - `CONTEXT.md` — glossary, ANAF/RO-CIUS terms
-- `ai/briefs/*.yaml` — task specifications
+- `ai/briefs/*.md` — task specifications
 - `pyproject.toml` — dependencies, toolchain
 - `tests/fixtures/` — sample data and API responses
 - `tests/` — current test coverage and patterns
@@ -56,14 +56,15 @@ Agents should use the following **primary context files** before making changes:
 All code changes must:
 
 - Pass `ruff check .`
-- Pass all tests (`uv run pytest -q`)
+- Pass all tests (`uv run --with pytest pytest -q`)
 - Achieve ≥85% coverage in touched modules
 - **ALWAYS** Create Google or NumPy style docstrings describing the function and it's arguments
-- Include type hints for all function arguments and returns
+- Include type hints for all function arguments and returns and for variables where it would add clarity to the code
 - **ALWAYS** Use fstrings for formatted messages
 - Use collections.abc where apropiate and usually latest python language features
 - Prefer local imports where feasible
 - **DO NOT** duplicate code, **Always** check if the functionality is there and reuse it, if refactoring is needed to do so then **ASK**
+- For messages printed on screen use unicode emojis for better highlighting
 
 ---
 
