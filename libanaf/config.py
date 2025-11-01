@@ -116,7 +116,7 @@ def get_config(
         raise FileNotFoundError(f"Environment file for env '{env}' not found at: {env_file_path}")
 
     # 2. Load .env file to populate environment variables for envtoml
-    load_dotenv(env_file_path)
+    load_dotenv(env_file_path, override=True)
 
     # 3. Load the base configuration from TOML, expanding any ${ENV_VAR} placeholders
     #    Assuming TOML keys match dataclass field names (e.g., 'url' not 'LIBANAF_AUTH_URL').

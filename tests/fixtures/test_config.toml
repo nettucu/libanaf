@@ -1,0 +1,26 @@
+[auth]
+auth_url = "https://example.com/auth"
+token_url = "https://example.com/token"
+revoke_url = "https://example.com/revoke"
+client_id = "toml_client_id"
+client_secret = "$LIBANAF_CLIENT_SECRET" # Loaded from .env
+redirect_uri = "https://example.com/redirect"
+
+[connection]
+access_token = ""
+refresh_token = ""
+
+[efactura]
+upload_url = "https://toml.example.com/upload"
+upload_url_params = []
+message_state_url = "https://example.com/state"
+message_state_url_params = []
+message_list_url = "https://example.com/list"
+message_list_url_params = []
+download_url = "https://example.com/download"
+download_url_params = []
+xml_validate_url = "https://example.com/validate"
+xml2pdf_url = "https://example.com/xml2pdf"
+
+[storage]
+download_dir = "/tmp/libanaf_downloads"

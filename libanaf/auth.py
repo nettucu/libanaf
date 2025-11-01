@@ -268,8 +268,7 @@ class LibANAF_AuthClient:
         auth_code = auth_response["code"]
 
         logger.debug(f"Authorization code: {auth_code}")
-        loop = asyncio.get_event_loop()
-        token = loop.run_until_complete(
+        token = asyncio.run(
             self.oauth.fetch_token(
                 self.token_url,
                 code=auth_code,

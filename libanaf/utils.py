@@ -32,6 +32,7 @@ def sanitize_file_name(*dirty, glue: str = "_", replace_char: str = "-") -> str:
         part = re.sub(r"[/\\?`&%*:|\"<>\x7F\x00-\x1F,.\s]", replace_char, part)
         pattern = replace_char + "+"
         part = re.sub(pattern, replace_char, part)
+        part = part.rstrip(replace_char)
 
         parts.append(part)
 
