@@ -47,6 +47,7 @@ class ProductSummaryRow:
     document_number: str
     invoice_date: date
     currency: str
+    total_invoice: Decimal
     total_payable: Decimal
     product: str
     product_code: str | None
@@ -144,8 +145,9 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
     )
     table.add_column("Supplier", style="green")
     table.add_column("Invoice Number", style="cyan")
-    table.add_column("Invoice Date", style="white")
-    table.add_column("Total Value\n(Payable)", justify="right", style="magenta")
+    table.add_column("Date", justify="center")
+    table.add_column("Total (Invoice)", justify="right", style="blue")
+    table.add_column("Total Value (Payable)", justify="right", style="green")
     table.add_column("Product", style="white")
     table.add_column("Product Code", style="white")
     table.add_column("Quantity", justify="right", style="yellow")
@@ -163,6 +165,7 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
             row.supplier,
             row.document_number,
             row.invoice_date.isoformat(),
+            format_currency(row.total_invoice, row.currency),
             format_currency(row.total_payable, row.currency),
             row.product,
             row.product_code or "-",
@@ -184,6 +187,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
     currency = getattr(document, "document_currency_code", "RON")
     company_id = document.accounting_supplier_party.party.company_id
     supplier_name = extract_supplier_name(document.accounting_supplier_party.party)
+    total_invoice = Decimal(str(document.legal_monetary_total.tax_inclusive_amount))
     total_payable = Decimal(str(document.legal_monetary_total.payable_amount))
     prepaid_amount = Decimal(document.legal_monetary_total.prepaid_amount)
     tax_exclusive = _get_tax_exclusive_amount(document)
@@ -214,6 +218,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
     rounded_vats = _adjust_to_target(vats_signed, tax_total * sign)
     totals_signed = [net + vat for net, vat in zip(rounded_nets, rounded_vats, strict=True)]
 
+    total_invoice_signed = (total_invoice * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP)
     total_payable_signed = (total_payable * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP)
 
     rows: list[ProductSummaryRow] = []
@@ -229,6 +234,7 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
                 document_number=document.id,
                 invoice_date=document.issue_date,
                 currency=currency,
+                total_invoice=total_invoice_signed,
                 total_payable=total_payable_signed,
                 product=entry.product,
                 product_code=entry.product_code,

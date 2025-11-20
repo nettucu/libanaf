@@ -97,6 +97,7 @@ def test_build_rows_handles_credit_note() -> None:
 
     assert len(rows) == 1
     row = rows[0]
+    assert row.total_invoice == Decimal("-699.01")
     assert row.total_payable == Decimal("-699.01")
     assert row.value == Decimal("-587.40")
     assert row.vat_value == Decimal("-111.61")
@@ -116,6 +117,7 @@ def test_summarize_products_renders_table(dummy_config: AppConfig) -> None:
 
     text_output = console.export_text(clear=False)
     assert "Invoice Product Summary" in text_output
+    assert "Total (Invoice)" in text_output
     assert "FX4010SW-III" in text_output
     assert "Total Per Line" in text_output
     assert "H87" in text_output
