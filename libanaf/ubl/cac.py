@@ -287,13 +287,30 @@ class TaxTotal(BaseXmlModel, tag="TaxTotal", ns="cac", nsmap=NSMAP):
 
 
 class LegalMonetaryTotal(BaseXmlModel, tag="LegalMonetaryTotal", search_mode="unordered", ns="cac"):  # , nsmap=NSMAP):
+    # LineExtensionAmount: What it is: The Net Sum of all the lines on the invoice.
+    # Treatment: This is the subtotal of the goods/services sold before tax and before any document-level discounts or charges.
     line_extension_amount: Optional[float] = element(tag="LineExtensionAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
+    # TaxExclusiveAmount: What it is: The Taxable Base.
+    # Treatment: The amount upon which VAT is calculated. If this equals the LineExtensionAmount, it implies there were no extra global fees or discounts applied to the header of the invoice.
     tax_exclusive_amount: Optional[float] = element(tag="TaxExclusiveAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
+    # TaxInclusiveAmount: What it is: The Total Current Invoice Value (Net + VAT).
+    # Treatment: This is the actual cost of the specific goods/services billed in this document.
+    # Accounting Note: If you are booking this invoice into an accounting system, this is the amount that affects your P&L/Expenses for this period.
     tax_inclusive_amount: Optional[float] = element(tag="TaxInclusiveAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
+    # AllowanceTotalAmount: What it is: The Total Discounts on the Invoice.
+    # Context: In UBL, an "Allowance" at the document level is a discount.
     allowance_total_amount: Optional[float] = element(tag="AllowanceTotalAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
     charge_total_amount: Optional[float] = element(tag="ChargeTotalAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
+    # What it is: Technically, this field is reserved for amounts already paid (like a deposit).
     prepaid_amount: Optional[float] = element(tag="PrepaidAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
     payable_rounding_amount: Optional[float] = element(tag="PayableRoundingAmount", default=0.0, ns="cbc", nsmap=NSMAP)
+
     payable_amount: float = element(tag="PayableAmount", ns="cbc", nsmap=NSMAP)
 
 
