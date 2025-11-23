@@ -13,6 +13,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
+from enum import Enum, auto
 from pathlib import Path
 
 import typer
@@ -21,7 +22,7 @@ from rich.table import Table
 
 from ..config import AppConfig, get_config
 from ..types import UNIT_CODES
-from ..ubl.cac import AllowanceCharge, CreditNoteLine, InvoiceLine
+from ..ubl.cac import CreditNoteLine, InvoiceLine
 from ..ubl.credit_note import CreditNote
 from ..ubl.invoice import Invoice
 from .common import (
@@ -36,6 +37,14 @@ logger = logging.getLogger(__name__)
 
 CURRENCY_QUANT = Decimal("0.01")
 DEFAULT_CONSOLE = Console()
+
+
+class _LineBaseType(Enum):
+    """Enum to classify how LineExtensionAmount should be interpreted."""
+
+    ALREADY_NET = auto()  # LineExtensionAmount is NET (SITEA pattern - EN 16931 compliant)
+    GROSS_NEEDS_DISCOUNT = auto()  # LineExtensionAmount is GROSS (IMC pattern - needs discount applied)
+    USE_DISTRIBUTION = auto()  # Fallback: distribute difference proportionally
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,91 +191,73 @@ def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Consol
 def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSummaryRow]:
     """
     Builds a list of `ProductSummaryRow` instances for a given document,
-    accurately calculating line totals from an inventory manager's perspective.
+    ensuring Total Per Line sums to TaxInclusiveAmount.
 
-    This involves a multi-step process:
-    1.  Calculate line-item values (`Value`, `Discount Value`, `Taxable Amount`)
-        based on explicit line-level data only. Special logic is applied to
-        handle discounts on credit lines correctly.
-    2.  Sum the initial line calculations and compare them to the document's
-        header totals (`TaxInclusiveAmount`).
-    3.  If the totals do not match and document-level allowances exist,
-        proportionally distribute the document-level allowances across the lines.
-    4.  Perform a final reconciliation of all calculated values (`net`, `vat`)
-        against the document's authoritative header totals (`TaxExclusiveAmount`,
-        `TaxTotal`) to account for any remaining rounding differences. This ensures
-        the final output is both arithmetically sound and compliant with the
-        invoice totals.
+    Uses pattern detection to handle two common UBL patterns:
+    - Pattern A (EN 16931 compliant): LineExtensionAmount is NET (after discounts)
+    - Pattern B (non-compliant but common): LineExtensionAmount is GROSS (before discounts)
     """
     currency = getattr(document, "document_currency_code", "RON")
     supplier_name = extract_supplier_name(document.accounting_supplier_party.party)
     sign = Decimal("-1") if isinstance(document, CreditNote) else Decimal("1")
 
-    # Authoritative totals from the document header
+    # Header Totals
     total_invoice = Decimal(document.legal_monetary_total.tax_inclusive_amount)
     total_payable = Decimal(document.legal_monetary_total.payable_amount)
     prepaid_amount = Decimal(document.legal_monetary_total.prepaid_amount)
     tax_exclusive_target = _get_tax_exclusive_amount(document)
     tax_total_target = Decimal(document.tax_total.tax_amount)
 
-    # Prepare initial line computations based on line-level data only
+    # 1. Parse lines
     line_entries = _prepare_line_entries(document)
     if not line_entries:
-        logger.debug(f"product-summary: document {document.id} has no invoice lines")
         return []
 
-    # Check for document-level allowances and distribute them if totals don't match
-    initial_nets = [entry.net_after_line for entry in line_entries]
-    initial_vats = [(n * entry.vat_rate / 100) for n, entry in zip(initial_nets, line_entries, strict=True)]
-    initial_sum = sum(n + v for n, v in zip(initial_nets, initial_vats, strict=True))
+    # 2. Determine Base Calculation Strategy
+    base_type = _detect_line_base_type(line_entries, tax_exclusive_target)
+    logger.debug(f"Document {document.id}: Detected Line Base Type: {base_type.name}")
 
-    # Use absolute tolerance for currency comparison (not relative)
-    totals_diff = abs(initial_sum - total_payable)
-    if totals_diff > Decimal("0.01"):
-        # Before redistributing document-level discounts, check if line-level discounts
-        # already account for the document AllowanceTotalAmount. If they do, skip redistribution
-        # to avoid double-counting discounts.
-        doc_allowances, doc_charges = _split_allowances(document.allowance_charge or [])
-        doc_adjustment_total = doc_allowances + doc_charges
+    # 3. Apply Strategy to determine 'Final Base' for each line
+    for entry in line_entries:
+        if base_type == _LineBaseType.ALREADY_NET:
+            # SITEA case: LineExt is already net. Discount is informational or already deducted.
+            entry.set_final_base(entry.line_ext_amount)
 
-        if doc_adjustment_total != 0:
-            # Sum line-level discounts to check if they already account for document-level amount
-            line_level_discounts = sum(entry.line_discount_value for entry in line_entries)
-            line_level_charges = sum(entry.line_charge_value for entry in line_entries)
-            line_level_total = line_level_discounts + line_level_charges
+        elif base_type == _LineBaseType.GROSS_NEEDS_DISCOUNT:
+            # IMC case: LineExt is Gross. We must subtract line discount.
+            line_sign = Decimal("1").copy_sign(entry.line_ext_amount) if entry.line_ext_amount else Decimal("1")
+            net_amount = entry.line_ext_amount - (entry.line_discount_abs * line_sign)
+            entry.set_final_base(net_amount)
 
-            # If line-level adjustments already match document-level (within tolerance),
-            # skip redistribution to avoid double-counting
-            adjustment_diff = abs(line_level_total - doc_adjustment_total)
-            if adjustment_diff <= Decimal("0.02"):
-                logger.debug(
-                    f"Skipping document-level redistribution for {document.id}: "
-                    f"line-level adjustments ({line_level_total}) already account for "
-                    f"document-level amount ({doc_adjustment_total}), diff={adjustment_diff}"
-                )
-            else:
-                logger.debug(
-                    f"Distributing document-level adjustment of {doc_adjustment_total} for {document.id}. "
-                    f"Initial sum: {initial_sum}, Payable amount: {total_payable}, "
-                    f"Line-level total: {line_level_total}"
-                )
-                weights = [entry.raw_amount.copy_abs() for entry in line_entries]
-                adjustments = _distribute_difference(doc_adjustment_total, weights)
-                for entry, adj in zip(line_entries, adjustments, strict=True):
-                    entry.apply_document_adjustment(adj)
+        else:
+            # Fallback: Start with LineExt
+            entry.set_final_base(entry.line_ext_amount)
 
-    # Finalize nets and vats, then reconcile with document totals
-    final_nets = [entry.final_net for entry in line_entries]
-    final_vats = [entry.final_vat() for entry in line_entries]
+    # 4. Reconcile Base with TaxExclusiveAmount
+    current_base_sum = sum(e.final_net for e in line_entries)
+    diff_base = tax_exclusive_target - current_base_sum
 
-    adjusted_nets = _adjust_to_target([n * sign for n in final_nets], tax_exclusive_target * sign)
-    adjusted_vats = _adjust_to_target([v * sign for v in final_vats], tax_total_target * sign)
-    adjusted_totals = [n + v for n, v in zip(adjusted_nets, adjusted_vats, strict=True)]
+    if abs(diff_base) > Decimal("0.005"):
+        logger.debug(f"Reconciling Base for {document.id}: Diff {diff_base}")
+        weights = [e.line_ext_amount.copy_abs() for e in line_entries]
+        adjustments = _distribute_difference(diff_base, weights)
+        for entry, adj in zip(line_entries, adjustments, strict=True):
+            entry.apply_adjustment(adj)
 
+    # 5. Calculate VAT and Reconcile with TaxTotal
+    initial_vats = [entry.calc_vat() for entry in line_entries]
+    final_vats = _adjust_to_target(initial_vats, tax_total_target)
+
+    # 6. Build Rows
     rows: list[ProductSummaryRow] = []
-    for entry, net_val, vat_val, total_val in zip(
-        line_entries, adjusted_nets, adjusted_vats, adjusted_totals, strict=True
-    ):
+    for entry, vat_val in zip(line_entries, final_vats, strict=True):
+        # Total per line = Base + VAT
+        total_val = entry.final_net + vat_val
+
+        # Calculate implied discount from final reconciled numbers
+        # Discount should be negative (final_net - raw_amount)
+        discount_calc = entry.final_net - entry.raw_amount
+
         rows.append(
             ProductSummaryRow(
                 company_id=document.accounting_supplier_party.party.company_id,
@@ -281,44 +272,70 @@ def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSumm
                 quantity=entry.quantity,
                 unit_of_measure=entry.unit_of_measure,
                 unit_price=entry.unit_price,
+                # Value is the GROSS amount (Price × Quantity) before discounts
                 value=(entry.raw_amount * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP),
                 vat_rate=entry.vat_rate,
-                vat_value=vat_val,
-                discount_rate=entry.discount_rate(),
-                discount_value=(entry.total_discount * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP),
-                total_per_line=total_val,
+                vat_value=(vat_val * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP),
+                discount_rate=entry.calc_discount_rate(discount_calc),
+                discount_value=(discount_calc * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP),
+                total_per_line=(total_val * sign).quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP),
             )
-        )
-
-    # Final check on the sum of calculated totals vs. the payable amount
-    totals_sum = sum(row.total_per_line for row in rows)
-    expected_total = (total_payable + prepaid_amount) * sign
-    if not math.isclose(totals_sum, expected_total, rel_tol=CURRENCY_QUANT):
-        logger.warning(
-            f"Final totals mismatch for {document.id}: calculated sum {totals_sum} vs expected {expected_total}"
         )
 
     return rows
 
 
+def _detect_line_base_type(entries: list[_LineComputation], target_tax_exclusive: Decimal) -> _LineBaseType:
+    """
+    Determine if the XML LineExtensionAmount is 'Gross' (needs discount subtraction)
+    or 'Already Net' (matches TaxExclusiveAmount directly).
+    """
+    # Sum if we assume LineExt is ALREADY NET
+    sum_as_net = sum(e.line_ext_amount for e in entries)
+    diff_if_net = abs(sum_as_net - target_tax_exclusive)
+
+    # Sum if we assume LineExt is GROSS (subtract specific line discounts)
+    sum_as_gross = Decimal("0")
+    for e in entries:
+        line_sign = Decimal("1").copy_sign(e.line_ext_amount) if e.line_ext_amount else Decimal("1")
+        net_amount = e.line_ext_amount - (e.line_discount_abs * line_sign)
+        sum_as_gross += net_amount
+
+    diff_if_gross = abs(sum_as_gross - target_tax_exclusive)
+
+    logger.debug(
+        f"Detection: Target={target_tax_exclusive} | "
+        f"SumNet={sum_as_net} (diff={diff_if_net}) | "
+        f"SumGross={sum_as_gross} (diff={diff_if_gross})"
+    )
+
+    if diff_if_net <= Decimal("0.05"):
+        return _LineBaseType.ALREADY_NET
+    if diff_if_gross <= Decimal("0.05"):
+        return _LineBaseType.GROSS_NEEDS_DISCOUNT
+
+    # If neither matches well, we have a document-level discount not in line allowances
+    return _LineBaseType.USE_DISTRIBUTION
+
+
 def _prepare_line_entries(document: Invoice | CreditNote) -> list[_LineComputation]:
-    """
-    Prepare line-item computations based on explicit line-level data.
-    This calculates the net cost from an inventory manager's perspective.
-    """
+    """Extract line-level data for pattern detection and calculation."""
     entries: list[_LineComputation] = []
     for line in _iter_lines(document):
         quantity = _extract_quantity(line)
         unit_price = _extract_unit_price(line, quantity)
+        line_ext = Decimal(str(line.line_extension_amount)) if line.line_extension_amount is not None else Decimal(0)
+
+        # Sum up allowances from the line (absolute values)
+        # In UBL, AllowanceCharge Amount is usually positive.
+        # ChargeIndicator=false means Discount.
+        discount_abs = Decimal("0")
+        if line.allowance_charge:
+            for ac in line.allowance_charge:
+                if ac.charge_indicator is False and ac.amount is not None:
+                    discount_abs += Decimal(str(ac.amount)).copy_abs()
+
         raw_amount = (unit_price or Decimal("0")) * (quantity or Decimal("0"))
-
-        line_discount, line_charge = _split_allowances(line.allowance_charge or [])
-
-        # For credit lines (negative quantity), a discount reduces the credit amount.
-        # This formula correctly applies discounts and charges based on the line's sign.
-        # Get the sign of the quantity (+1 or -1).
-        quantity_sign = Decimal("1").copy_sign(quantity) if quantity else Decimal("1")
-        net_after_line = raw_amount + (line_discount + line_charge) * quantity_sign
 
         entries.append(
             _LineComputation(
@@ -329,9 +346,8 @@ def _prepare_line_entries(document: Invoice | CreditNote) -> list[_LineComputati
                 unit_price=unit_price,
                 vat_rate=Decimal(str(_extract_vat_percent(line))),
                 raw_amount=raw_amount,
-                line_discount_value=line_discount,
-                line_charge_value=line_charge,
-                net_after_line=net_after_line,
+                line_ext_amount=line_ext,
+                line_discount_abs=discount_abs,
             )
         )
     return entries
@@ -373,19 +389,6 @@ def _extract_unit_price(line: InvoiceLine | CreditNoteLine, quantity: Decimal) -
 def _extract_vat_percent(line: InvoiceLine | CreditNoteLine) -> float:
     tax_category = line.item.classified_tax_category
     return tax_category.percent if (tax_category and tax_category.percent is not None) else 0.0
-
-
-def _split_allowances(allowances: Iterable[AllowanceCharge]) -> tuple[Decimal, Decimal]:
-    """Splits allowances into total discount (negative) and charge (positive) amounts."""
-    discount_total = Decimal("0")
-    charge_total = Decimal("0")
-    for allowance in allowances:
-        amount = Decimal(str(allowance.amount)).copy_abs()
-        if allowance.charge_indicator:
-            charge_total += amount
-        else:
-            discount_total -= amount
-    return discount_total, charge_total
 
 
 def _distribute_difference(total_difference: Decimal, weights: Sequence[Decimal]) -> list[Decimal]:
@@ -474,36 +477,27 @@ class _LineComputation:
     unit_of_measure: str | None
     unit_price: Decimal | None
     vat_rate: Decimal
-    raw_amount: Decimal  # Gross value (price * qty)
-    line_discount_value: Decimal  # Explicit line-level discount (negative)
-    line_charge_value: Decimal  # Explicit line-level charge (positive)
-    net_after_line: Decimal  # Net after line-level allowances
-    document_adjustment: Decimal = Decimal("0")
+    raw_amount: Decimal  # Price * Qty
+    line_ext_amount: Decimal  # XML LineExtensionAmount (may be NET or GROSS)
+    line_discount_abs: Decimal  # Explicit line-level discount (absolute value)
 
-    def apply_document_adjustment(self, adjustment: Decimal) -> None:
-        self.document_adjustment = adjustment
+    final_net: Decimal = Decimal("0")
 
-    @property
-    def final_net(self) -> Decimal:
-        """The final taxable amount for the line after all adjustments."""
-        return self.net_after_line + self.document_adjustment
+    def set_final_base(self, amount: Decimal) -> None:
+        """Set the initial final net amount before reconciliation."""
+        self.final_net = amount
 
-    @property
-    def total_discount(self) -> Decimal:
-        """The total discount for the line (line-level + distributed document-level)."""
-        doc_discount = self.document_adjustment if self.document_adjustment < 0 else Decimal("0")
-        return self.line_discount_value + doc_discount
+    def apply_adjustment(self, adj: Decimal) -> None:
+        """Apply a reconciliation adjustment to the final net amount."""
+        self.final_net += adj
 
-    def final_vat(self) -> Decimal:
-        """The final VAT amount for the line."""
+    def calc_vat(self) -> Decimal:
+        """Calculate VAT based on final net amount."""
         return self.final_net * self.vat_rate / Decimal("100")
 
-    def discount_rate(self) -> Decimal:
-        """The effective discount rate for the line."""
+    def calc_discount_rate(self, discount_val: Decimal) -> Decimal:
+        """Calculate discount rate as percentage of raw amount."""
         if self.raw_amount == 0:
             return Decimal("0")
-
-        # For credit lines, the basis for the rate is the absolute value
-        # `total_discount` is negative, so we take its absolute value too.
-        rate = (self.total_discount.copy_abs() / self.raw_amount.copy_abs()) * Decimal("100")
+        rate = (discount_val.copy_abs() / self.raw_amount.copy_abs()) * Decimal("100")
         return rate.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
