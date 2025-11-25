@@ -1,7 +1,14 @@
-## Objective
+# Objective
 
  Write a new feature for the invoices subapp called prod-summary
 
+## Documentation
+
+- [UBL 2.1 Invoice](https://www.truugo.com/ubl/2.1/invoice/)
+- [UBL 2.1](https://docs.oasis-open.org/ubl/UBL-2.1.html)
+- [cbc:LineExtensionAmount](https://docs.peppol.eu/poacc/billing/3.0/syntax/ubl-invoice/cac-InvoiceLine/cbc-LineExtensionAmount/)
+- [EN16931 - model rules](https://doc.visma.net/userdoc/business/17.10/nb-no/products/business/reference/r_AIP_Rules_EN16931.html)
+- [PEPPOL-EN16931-R120.xml](https://github.com/OpenPEPPOL/peppol-bis-invoice-3/blob/master/rules/unit-UBL-PEPPOL/PEPPOL-EN16931-R120.xml)
 
 There are multiple views here:
 1. the UBL standard way, which I fully understand
@@ -109,6 +116,11 @@ When summing up the `Total Per Line` from both lines you get the `Total (Invoice
 
 If there are discounts at document level, those are to be used only if sum(`Total Per Line`) <> `Total (Invoice)`
 
+Another Example:
+
+SITEA28525 - `dlds/4143642379_4651206731.xml`
+
+
 
 ## Arguments
 
@@ -138,10 +150,6 @@ If there are discounts at document level, those are to be used only if sum(`Tota
   - Discount can be wrongly entered in the XML file (see below example), the amount is negative even though ChargeIndicator is false (the amount should be positive in the XML) and only be negative in calculations
   - In the end the sum of Total Per line **MUST** be equal to Total Value (Payable)
 
-## Documentation
-
-- [UBL 2.1 Invoice](https://www.truugo.com/ubl/2.1/invoice/)
-- [UBL 2.1](https://docs.oasis-open.org/ubl/UBL-2.1.html)
 
 ## Example of complex invoice
 
