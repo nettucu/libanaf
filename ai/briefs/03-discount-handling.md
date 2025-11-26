@@ -28,10 +28,10 @@ The "fake" discount lines will be removed from the final list of entries. The re
 
 ## Verification
 -   **Test Files**:
-    -   `dlds/6256610403_5733390573.xml`
-    -   `dlds/4070424984_4613282582.xml`
-    -   `dlds/4147817631_4653348903.xml`
-    -   `dlds/5895021193_5549139021.xml`
+    -   `dlds/6256610403_5733390573.xml` - BCS136911
+    -   `dlds/4070424984_4613282582.xml` - CRFA8137
+    -   `dlds/4147817631_4653348903.xml` - DSTW.25023563.2
+    -   `dlds/5895021193_5549139021.xml` - BTER1007040
 -   **Success Criteria**:
     -   No negative quantity lines with "Discount" in the name in the output.
     -   Total Payable Amount matches the invoice total.
