@@ -319,16 +319,23 @@ def _detect_line_base_type(entries: list[_LineComputation], target_tax_exclusive
 
 
 def _prepare_line_entries(document: Invoice | CreditNote) -> list[_LineComputation]:
-    """Extract line-level data for pattern detection and calculation."""
-    entries: list[_LineComputation] = []
+    """
+    Prepare line-item computations based on explicit line-level data.
+
+    Special Logic:
+    Detects invoice lines that are actually discounts (Negative Quantity + "Discount" in name)
+    and distributes their value proportionally to the real product lines instead of
+    returning them as separate entries.
+    """
+    all_entries: list[_LineComputation] = []
+
+    # 1. First Pass: Parse all lines into objects
     for line in _iter_lines(document):
         quantity = _extract_quantity(line)
         unit_price = _extract_unit_price(line, quantity)
         line_ext = Decimal(str(line.line_extension_amount)) if line.line_extension_amount is not None else Decimal(0)
 
         # Sum up allowances from the line (absolute values)
-        # In UBL, AllowanceCharge Amount is usually positive.
-        # ChargeIndicator=false means Discount.
         discount_abs = Decimal("0")
         if line.allowance_charge:
             for ac in line.allowance_charge:
@@ -337,20 +344,62 @@ def _prepare_line_entries(document: Invoice | CreditNote) -> list[_LineComputati
 
         raw_amount = (unit_price or Decimal("0")) * (quantity or Decimal("0"))
 
-        entries.append(
-            _LineComputation(
-                product=(line.item.name or "Unknown").strip(),
-                product_code=line.item.seller_item_id.strip() if line.item.seller_item_id else None,
-                quantity=quantity,
-                unit_of_measure=_extract_unit_code(line),
-                unit_price=unit_price,
-                vat_rate=Decimal(str(_extract_vat_percent(line))),
-                raw_amount=raw_amount,
-                line_ext_amount=line_ext,
-                line_discount_abs=discount_abs,
-            )
+        entry = _LineComputation(
+            product=(line.item.name or "Unknown").strip(),
+            product_code=line.item.seller_item_id.strip() if line.item.seller_item_id else None,
+            quantity=quantity,
+            unit_of_measure=_extract_unit_code(line),
+            unit_price=unit_price,
+            vat_rate=Decimal(str(_extract_vat_percent(line))),
+            raw_amount=raw_amount,
+            line_ext_amount=line_ext,
+            line_discount_abs=discount_abs,
         )
-    return entries
+        # Initialize final_net with line_ext_amount for now (will be refined in build_rows)
+        # But for the purpose of discount distribution, we need a base value.
+        # We will use line_ext_amount as the "value" of the line.
+        entry.set_final_base(line_ext)
+        all_entries.append(entry)
+
+    # 2. Second Pass: Separate "Real" lines from "Fake Discount" lines
+    product_entries: list[_LineComputation] = []
+    discount_entries: list[_LineComputation] = []
+
+    for entry in all_entries:
+        # Heuristic: If quantity is negative AND name contains "discount" or "reducere"
+        # treat it as a financial adjustment, not a returned product.
+        is_fake_discount = entry.quantity < 0 and (
+            "discount" in entry.product.lower() or "reducere" in entry.product.lower()
+        )
+
+        if is_fake_discount:
+            discount_entries.append(entry)
+        else:
+            product_entries.append(entry)
+
+    # 3. Third Pass: Distribute the value of discount lines (if any)
+    if discount_entries and product_entries:
+        # Sum the total value of the discount lines (e.g. -112.40)
+        # We use line_ext_amount because that captures the full value of that line
+        total_special_discount = sum(e.line_ext_amount for e in discount_entries)
+
+        logger.debug(f"Found {len(discount_entries)} discount lines totaling {total_special_discount}. Distributing...")
+
+        # We distribute based on the absolute raw value of the real products
+        weights = [e.raw_amount.copy_abs() for e in product_entries]
+
+        # This function returns parts that sum exactly to total_special_discount
+        adjustments = _distribute_difference(total_special_discount, weights)
+
+        # Apply the adjustment to the real lines
+        for entry, adj in zip(product_entries, adjustments, strict=True):
+            # We apply this as an adjustment to the final net
+            # Note: This adjustment happens BEFORE the main reconciliation logic in build_rows
+            # so we are effectively modifying the "Base" of the line.
+            entry.apply_adjustment(adj)
+
+    # 4. Return only the real product entries
+    return product_entries
 
 
 def _iter_lines(document: Invoice | CreditNote) -> Iterable[InvoiceLine | CreditNoteLine]:
@@ -403,12 +452,30 @@ def _distribute_difference(total_difference: Decimal, weights: Sequence[Decimal]
             return [share] * len(weights)
         return []
 
-    adjustments = [(total_difference * w) / weight_sum for w in weights]
-    # Ensure the sum of adjustments exactly equals the total_difference
-    current_sum = sum(adj.quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP) for adj in adjustments)
+    # Calculate raw shares
+    raw_shares = [(total_difference * w) / weight_sum for w in weights]
+
+    # Quantize
+    adjustments = [s.quantize(CURRENCY_QUANT, rounding=ROUND_HALF_UP) for s in raw_shares]
+
+    # Calculate remainder
+    current_sum = sum(adjustments)
     remainder = total_difference - current_sum
-    if remainder != 0 and adjustments:
-        adjustments[-1] += remainder
+
+    if remainder == 0:
+        return adjustments
+
+    # Distribute remainder to the items with largest weights to minimize relative error
+    step = CURRENCY_QUANT if remainder > 0 else -CURRENCY_QUANT
+    num_steps = int(abs(remainder) / CURRENCY_QUANT)
+
+    # Sort indices by weight (descending)
+    indexed_weights = sorted(enumerate(weights), key=lambda x: x[1], reverse=True)
+
+    for i in range(num_steps):
+        target_index = indexed_weights[i % len(indexed_weights)][0]
+        adjustments[target_index] += step
+
     return adjustments
 
 

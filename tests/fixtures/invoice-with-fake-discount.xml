@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" xmlns:udt="urn:oasis:names:specification:ubl:schema:xsd:UnqualifiedDataTypes-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:ccts="urn:un:unece:uncefact:documentation:2" xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:qdt="urn:oasis:names:specification:ubl:schema:xsd:QualifiedDataTypes-2" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+  <cbc:CustomizationID>urn:cen.eu:en16931:2017#compliant#urn:efactura.mfinante.ro:CIUS-RO:1.0.1</cbc:CustomizationID>
+  <cbc:ID>CRFA8137</cbc:ID>
+  <cbc:IssueDate>2025-01-21</cbc:IssueDate>
+  <cbc:DueDate>2025-02-20</cbc:DueDate>
+  <cbc:InvoiceTypeCode>380</cbc:InvoiceTypeCode>
+  <cbc:Note>TVA la incasare</cbc:Note>
+  <cbc:Note>Prin semnarea facturii, clientul confirma primirea marfii, accepta preturile si se angajeaza la plata facturii  la termenul stabilit.;Marfa se considera primita in custodie pana la plata integrala a acesteia. In cazul nerespectarii termenului de plata , penalitatile sunt de 0.1% pentru fiecare zi de</cbc:Note>
+  <cbc:Note>intarziere peste termenul scadent. Cuantumul penalitatilor poate depasi valoarea facturata.;Prezentele clauze tin loc de contract acceptat de ambele parti.</cbc:Note>
+  <cbc:DocumentCurrencyCode>RON</cbc:DocumentCurrencyCode>
+  <cbc:TaxCurrencyCode>RON</cbc:TaxCurrencyCode>
+  <cac:AccountingSupplierParty>
+    <cac:Party>
+      <cbc:EndpointID schemeID="EM">sales@crinel.ro</cbc:EndpointID>
+      <cac:PartyIdentification>
+        <cbc:ID>10010168</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PostalAddress>
+        <cbc:StreetName>LANII nr. 104</cbc:StreetName>
+        <cbc:CityName>BRASOV</cbc:CityName>
+        <cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>RO10010168</cbc:CompanyID>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>CRINEL SERVICE SRL</cbc:RegistrationName>
+        <cbc:CompanyID>J08/775/1997</cbc:CompanyID>
+        <cbc:CompanyLegalForm>Capital social: 6000</cbc:CompanyLegalForm>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Name>Enoiu Larisa</cbc:Name>
+        <cbc:Telephone>0268322907</cbc:Telephone>
+        <cbc:ElectronicMail>sales@crinel.ro</cbc:ElectronicMail>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyIdentification>
+        <cbc:ID>19507820</cbc:ID>
+      </cac:PartyIdentification>
+      <cac:PostalAddress>
+        <cbc:StreetName>MUN. BRASOV, STR. OLTET, NR.8, BL.16, SC.A, AP.1</cbc:StreetName>
+        <cbc:CityName>BRASOV</cbc:CityName>
+        <cbc:CountrySubentity>RO-BV</cbc:CountrySubentity>
+        <cac:Country>
+          <cbc:IdentificationCode>RO</cbc:IdentificationCode>
+        </cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>19507820</cbc:CompanyID>
+        <cac:TaxScheme/>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>TRIFU MIHAELA - CABINET MEDICAL INDIVIDUAL DE MEDICINA DENTARA</cbc:RegistrationName>
+        <cbc:CompanyID>19507820</cbc:CompanyID>
+      </cac:PartyLegalEntity>
+      <cac:Contact>
+        <cbc:Telephone>0721336432</cbc:Telephone>
+      </cac:Contact>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode>42</cbc:PaymentMeansCode>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>RO87RNCB0053048596240001</cbc:ID>
+      <cbc:Name>BANCA COMERCIALA ROMANA</cbc:Name>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:PaymentMeans>
+    <cbc:PaymentMeansCode>42</cbc:PaymentMeansCode>
+    <cac:PayeeFinancialAccount>
+      <cbc:ID>RO23TREZ1315069XXX000303</cbc:ID>
+      <cbc:Name>Trezorerie operativa Municipiul Brasov</cbc:Name>
+    </cac:PayeeFinancialAccount>
+  </cac:PaymentMeans>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="RON">141.54</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="RON">744.96</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="RON">141.54</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
+  <cac:LegalMonetaryTotal>
+    <cbc:LineExtensionAmount currencyID="RON">744.96</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="RON">744.96</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="RON">886.50</cbc:TaxInclusiveAmount>
+    <cbc:PayableAmount currencyID="RON">886.50</cbc:PayableAmount>
+  </cac:LegalMonetaryTotal>
+  <cac:InvoiceLine>
+    <cbc:ID>1</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">10.000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">235.29</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>CF48L FR.FINISAT</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">23.5290</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>2</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">5.000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">63.03</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FR.DIAMANTATA MARE</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">12.6060</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>3</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">10.000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">126.05</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>899.021 FR.DIAMANTATA</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">12.6050</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>4</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">40.000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">403.36</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>FR.DIAMANTATA</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">10.0840</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+  <cac:InvoiceLine>
+    <cbc:ID>5</cbc:ID>
+    <cbc:InvoicedQuantity unitCode="H87">-1.000</cbc:InvoicedQuantity>
+    <cbc:LineExtensionAmount currencyID="RON">-82.77</cbc:LineExtensionAmount>
+    <cac:Item>
+      <cbc:Name>DISCOUNT 10%</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>19</cbc:Percent>
+        <cac:TaxScheme>
+          <cbc:ID>VAT</cbc:ID>
+        </cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price>
+      <cbc:PriceAmount currencyID="RON">82.7700</cbc:PriceAmount>
+    </cac:Price>
+  </cac:InvoiceLine>
+</Invoice>
