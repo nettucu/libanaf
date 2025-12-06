@@ -1,4 +1,37 @@
 {
   "search.useIgnoreFiles": false,
-  "debugpy.debugJustMyCode": false
+  "debugpy.debugJustMyCode": false,
+  "python.analysis.extraPaths": ["${workspaceFolder}/libanaf"],
+  "[python]": {
+    "editor.showUnused": false,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "isort.args": ["--profile", "black"],
+  "black-formatter.args": ["--line-length", "120"],
+  "editor.inlineSuggest.showToolbar": "onHover",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportGeneralTypeIssues": "none"
+  },
+  "[javascript]": {
+    "editor.maxTokenizationLineLength": 2500,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "prettier.printWidth": 120,
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.fixAll.eslint": "explicit"
+    }
+  },
+  "cursorpyright.analysis.diagnosticSeverityOverrides": {
+    "reportGeneralTypeIssues": "none"
+  },
+  "cursorpyright.analysis.extraPaths": ["${workspaceFolder}/libanaf"],
+  "cursorpyright.analysis.typeCheckingMode": "basic",
+  "editor.defaultFormatter": "charliermarsh.ruff",
+  "python.pyrefly.displayTypeErrors": "force-on"
 }
