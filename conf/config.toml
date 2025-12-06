@@ -40,3 +40,9 @@ xml2pdf_url = "https://api.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA"
 
 [storage]
 download_dir = "/home/catalin/work/libanaf/dlds/"
+
+[retry]
+count = 3
+delay = 5
+backoff_factor = 2
+max_delay = 20

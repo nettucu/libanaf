@@ -1,9 +1,10 @@
 import asyncio
 import json
 import logging
-from pathlib import Path
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
+import httpx
 from httpx import AsyncClient, HTTPStatusError, Response
 from rich.console import Console
 from rich.progress import (
@@ -15,9 +16,10 @@ from rich.progress import (
 )
 
 from libanaf.types import Filter
+
 from ..auth import LibANAF_AuthClient  # Keep for type hinting
 from ..comms import make_auth_client  # This will now take config
-from ..config import get_config, AppConfig
+from ..config import AppConfig, get_config
 from ._utils import is_invoice_downloaded
 from .list import fetch_invoice_list
 
@@ -70,7 +72,35 @@ async def download_invoice(
         url_base = config.efactura.download_url
         url: str = f"{url_base}?id={invoice_id}"
         logger.debug(f"Downloading from: {url}")
-        response: Response = await client.get(url)
+
+        from tenacity import (
+            AsyncRetrying,
+            before_sleep_log,
+            retry_if_exception_type,
+            stop_after_attempt,
+            wait_exponential,
+        )
+
+        response: Response | None = None
+        try:
+            async for attempt in AsyncRetrying(
+                stop=stop_after_attempt(config.retry.count),
+                wait=wait_exponential(
+                    multiplier=config.retry.backoff_factor, min=config.retry.delay, max=config.retry.max_delay
+                ),
+                retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
+                before_sleep=before_sleep_log(logger, logging.WARNING),
+                reraise=True,
+            ):
+                with attempt:
+                    response = await client.get(url)
+                    response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Failed to download {url} after retries: {e}")
+            return f"Failed to download: {e}"
+
+        if response is None:
+            return f"Failed to get response for {url}"
 
         logger.debug(response.headers)
         if response.status_code != 200:
@@ -189,8 +219,9 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
             console.print("[bold yellow]No messages found to download.[/bold yellow]")
             return
 
+        invoices_to_download: list[str] = []
         if isinstance(messages, list):  # noqa: E999
-            invoices_to_download: list[str] = [
+            invoices_to_download = [
                 message["id"] for message in messages if not is_invoice_downloaded(message, download_dir)
             ]
 

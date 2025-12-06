@@ -11,6 +11,7 @@ from .process import process_invoices
 from .show import show_invoices
 from .summary import summarize_invoices
 from .product_summary import summarize_products
+from ..exceptions import AnafRequestError
 
 app = typer.Typer()
 
@@ -36,7 +37,16 @@ def invoices_list(
 ) -> None:
     """Get the list of available invoices."""
     typer.echo(f"Starting invoice list for the last {days} days for CIF: {cif} and filter {filter}")
-    list_invoices(days, cif, filter)
+    try:
+        list_invoices(days, cif, filter)
+    except AnafRequestError as e:
+        typer.secho(str(e), fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.secho(f"An unexpected error occurred: {e}", fg=typer.colors.RED)
+        # We might want to see the traceback for unexpected errors if verbose, but standard user behavior is clean exit
+        # For now, consistent behavior:
+        raise typer.Exit(code=1)
 
 
 @app.command(name="show")

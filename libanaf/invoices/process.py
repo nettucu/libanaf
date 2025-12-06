@@ -5,6 +5,7 @@ import zipfile
 from pathlib import Path
 
 import aiofiles
+import httpx
 import typer
 from httpx import AsyncClient, HTTPStatusError, ReadTimeout, Response
 from lxml import etree
@@ -20,7 +21,7 @@ from rich.progress import (
 )
 
 from libanaf.comms import make_auth_client
-from libanaf.config import get_config, AppConfig
+from libanaf.config import AppConfig, get_config
 
 from ..ubl.ubl_document import parse_ubl_document
 
@@ -82,38 +83,58 @@ async def convert_to_pdf(
         async with aiofiles.open(xml) as f:
             data = await f.read()
 
+        from tenacity import (
+            AsyncRetrying,
+            before_sleep_log,
+            retry_if_exception_type,
+            stop_after_attempt,
+            wait_exponential,
+        )
+
+        response: Response | None = None
         try:
-            response: Response = await client.post(
-                url=url, headers=headers, data=data, timeout=30.0
-            )  # use 30s timeout for slow moving requests
+            async for attempt in AsyncRetrying(
+                stop=stop_after_attempt(config.retry.count),
+                wait=wait_exponential(
+                    multiplier=config.retry.backoff_factor, min=config.retry.delay, max=config.retry.max_delay
+                ),
+                retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
+                before_sleep=before_sleep_log(logger, logging.WARNING),
+                reraise=True,
+            ):
+                with attempt:
+                    response = await client.post(url=url, headers=headers, data=data, timeout=30.0)
+                    response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Error converting {xml}: {e}")
+            return f"Error: {e}"
 
-            if response.status_code != 200:
-                logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
-                return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
+        if response is None:
+            return f"Error: No response for {xml}"
 
-            content_type = response.headers["content-type"]
-            if any(s in content_type for s in ("application/json", "text/plain")):
-                # we have a content_type which suggests the response is actually an error
-                try:
-                    message = response.json()
-                    logger.error(f"Error received downloading: {url} - {message['eroare']}")
-                    return message
-                except json.JSONDecodeError:
-                    # this should not happen
-                    logger.error(f"Unknow error for url: {url}")
-                    return f"Unknow error for url: {url}"
+        if response.status_code != 200:
+            # Should be caught by raise_for_status, but keeping valid check
+            logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
+            return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
 
-            # Theoretically here all should be well
-            async with aiofiles.open(pdf, "wb") as pdf_file:
-                await pdf_file.write(response.content)
+        content_type = response.headers["content-type"]
+        if any(s in content_type for s in ("application/json", "text/plain")):
+            # we have a content_type which suggests the response is actually an error
+            try:
+                message = response.json()
+                logger.error(f"Error received downloading: {url} - {message['eroare']}")
+                return f"Error: {message.get('eroare', message)}"
+            except json.JSONDecodeError:
+                # this should not happen
+                logger.error(f"Unknow error for url: {url}")
+                return f"Unknow error for url: {url}"
 
-            # progress.console.log(f"Processing {xml}")
-            progress.update(task_id=taskid, file=xml, advance=1, refresh=True)
-        except ReadTimeout as timeout:
-            progress.console.log(
-                f"[bold red]HTTP Timeout occured:[/bold red]. [bold cyan]Ignoring ...[/bold cyan] {timeout}"
-            )
-            await asyncio.sleep(5)  # sleep additional 5 seconds to cool ANAF down :)
+        # Theoretically here all should be well
+        async with aiofiles.open(pdf, "wb") as pdf_file:
+            await pdf_file.write(response.content)
+
+        # progress.console.log(f"Processing {xml}")
+        progress.update(task_id=taskid, file=xml, advance=1, refresh=True)
 
     return f"SUCCESS: {xml}"
 

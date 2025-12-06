@@ -2,10 +2,10 @@ import json
 import logging
 import logging.config
 import os
-from pathlib import Path
-from typing import Any
 from dataclasses import dataclass, field
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
 import envtoml
 from dotenv import load_dotenv, set_key
@@ -55,6 +55,16 @@ class StorageConfig:
 
 
 @dataclass(frozen=True)
+class RetryConfig:
+    """Retry configuration for network requests."""
+
+    count: int = 3
+    delay: int = 5
+    backoff_factor: int = 2
+    max_delay: int = 20
+
+
+@dataclass(frozen=True)
 class AppConfig:
     """Root container for all configuration sections."""
 
@@ -62,6 +72,7 @@ class AppConfig:
     connection: ConnectionConfig
     efactura: EfacturaConfig
     storage: StorageConfig
+    retry: RetryConfig
     # Non-TOML configuration state
     env_config_file: Path = field(repr=False)
 
@@ -130,12 +141,14 @@ def get_config(
     conn_cfg = ConnectionConfig(**toml_config["connection"])
     efactura_cfg = EfacturaConfig(**toml_config["efactura"])
     storage_cfg = StorageConfig(download_dir=Path(toml_config["storage"]["download_dir"]))
+    retry_cfg = RetryConfig(**toml_config.get("retry", {}))
 
     return AppConfig(
         auth=auth_cfg,
         connection=conn_cfg,
         efactura=efactura_cfg,
         storage=storage_cfg,
+        retry=retry_cfg,
         env_config_file=env_file_path,
     )
 
