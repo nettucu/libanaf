@@ -227,15 +227,19 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
 
         if not invoices_to_download:
             console.print("[bold green]All invoices are already downloaded.[/bold green]")
+            logger.info("All invoices are already downloaded.")
             return
 
         console.print(f"[bold blue]Downloading {len(invoices_to_download)} invoices...[/bold blue]")
+        logger.info(f"Downloading {len(invoices_to_download)} invoices...")
 
         loop.run_until_complete(download_all_invoices(invoices_to_download, download_dir))
         console.print("[bold green]Downloaded all missing invoices.[/bold green]")
+        logger.info("Downloaded all missing invoices.")
 
     except HTTPStatusError as e:
         console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")
+        logger.error(f"HTTP error occurred: {e}", exc_info=e, stack_info=True)
     except Exception as e:
         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
         console.print(f"[bold red]An error occurred:[/bold red] {e}")

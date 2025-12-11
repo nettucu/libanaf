@@ -1,17 +1,17 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 from typing import Annotated
 
 import typer
 
+from ..exceptions import AnafRequestError
 from ..types import Filter
 from .download import download
 from .list import list_invoices
 from .process import process_invoices
+from .product_summary import summarize_products
 from .show import show_invoices
 from .summary import summarize_invoices
-from .product_summary import summarize_products
-from ..exceptions import AnafRequestError
 
 app = typer.Typer()
 
@@ -82,6 +82,10 @@ def summary(
         "Generating summary with params: "
         f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
     )
+    logger.info(
+        "Generating summary with params: "
+        f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
+    )
     summarize_invoices(invoice_number, supplier_name, start_date, end_date)
 
 
@@ -95,6 +99,10 @@ def prod_summary(
     """Show a product-level summary for invoices or credit notes."""
 
     typer.echo(
+        "Generating product summary with params: "
+        f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
+    )
+    logger.info(
         "Generating product summary with params: "
         f"invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
     )
@@ -122,6 +130,7 @@ def invoices_download(
     Download missing invoices and store them locally.
     """
     typer.echo(f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}")
+    logger.info(f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}")
     download(days, cif, filter)
 
 
@@ -133,4 +142,5 @@ def invoices_process() -> None:
     2. Uses the ANAF API to convert the files to PDF
     """
     typer.echo("Starting processing ...")
+    logger.info("Starting processing ...")
     process_invoices()

@@ -173,11 +173,14 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
             logger.debug(f"Processing results = {results}")
 
         console.print("[bold green]Processed all missing PDFs.[/bold green]")
+        logger.info("Processed all missing PDFs.")
 
     except HTTPStatusError as e:
         console.log(f"[bold red]HTTP error occurred:[/bold red] {e}")
+        logger.error(f"HTTP error occurred: {e}", exc_info=e, stack_info=True)
     except ReadTimeout as e:
         console.log(f"[bold red]HTTP Timeout occured:[/bold red]. Ignoring ... {e}")
+        logger.error(f"HTTP Timeout occured: {e}", exc_info=e, stack_info=True)
         await asyncio.sleep(5)  # sleep additional 5 seconds to cool ANAF down :)
     except Exception as e:
         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
