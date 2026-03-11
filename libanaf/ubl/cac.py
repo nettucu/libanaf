@@ -368,3 +368,27 @@ class PaymentMeans(BaseXmlModel, tag="PaymentMeans", search_mode="unordered", ns
             return self.payee_financial_account.get_display_str()
 
         return {"formatted": "N/A", "iban": "N/A", "bank": "N/A"}
+
+
+class DeliveryAddress(BaseXmlModel, tag="Address", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    street_name: Optional[str] = element(tag="StreetName", default=None, ns="cbc", nsmap=NSMAP)
+    city_name: Optional[str] = element(tag="CityName", default=None, ns="cbc", nsmap=NSMAP)
+    country_subentity: Optional[str] = element(tag="CountrySubentity", default=None, ns="cbc", nsmap=NSMAP)
+    country: Optional[Country] = None
+
+
+class DeliveryLocation(BaseXmlModel, tag="DeliveryLocation", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    id: Optional[str] = element(tag="ID", default=None, ns="cbc", nsmap=NSMAP)
+    address: Optional[DeliveryAddress] = None
+
+
+class DeliveryParty(BaseXmlModel, tag="DeliveryParty", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    party_name: Optional[PartyName] = None
+
+
+class Delivery(BaseXmlModel, tag="Delivery", search_mode="unordered", ns="cac", nsmap=NSMAP):
+    actual_delivery_date: Optional[datetime.date] = element(
+        tag="ActualDeliveryDate", default=None, ns="cbc", nsmap=NSMAP
+    )
+    delivery_location: Optional[DeliveryLocation] = None
+    delivery_party: Optional[DeliveryParty] = None

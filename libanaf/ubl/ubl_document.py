@@ -21,6 +21,7 @@ from libanaf.ubl.cac import (
     AccountingSupplierParty,
     AdditionalDocumentReference,
     AllowanceCharge,
+    Delivery,
     LegalMonetaryTotal,
     OrderReference,
     Party,
@@ -76,6 +77,7 @@ class UBLDocument(BaseXmlModel):
     accounting_supplier_party: AccountingSupplierParty
     accounting_customer_party: AccountingCustomerParty
     payment_means: Optional[list[PaymentMeans]] = None
+    delivery: Optional[Delivery] = None
     tax_total: TaxTotal
     legal_monetary_total: LegalMonetaryTotal
 
