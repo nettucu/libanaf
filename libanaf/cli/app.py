@@ -6,10 +6,12 @@ import typer
 from libanaf.config import get_settings, setup_logging
 from libanaf.invoices.app import app as invoices_app
 from libanaf.cli.auth import auth as auth_command
+from libanaf.cli.auth import show_token as show_token_command
 
 app = typer.Typer()
 app.add_typer(invoices_app, name="invoices", help="Manage invoices")
 app.command()(auth_command)
+app.command(name="show-token")(show_token_command)
 
 logger = logging.getLogger()
 
