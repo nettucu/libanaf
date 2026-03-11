@@ -2,176 +2,133 @@ import json
 import logging
 import logging.config
 import os
-from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-import envtoml
-from dotenv import load_dotenv, set_key
+from dotenv import set_key
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-@dataclass(frozen=True)
-class AuthConfig:
-    """Authentication endpoints and credentials."""
-
-    auth_url: str
-    token_url: str
-    revoke_url: str
+class AuthSettings(BaseModel):
+    """OAuth2 credentials and ANAF authorization endpoints."""
     client_id: str
     client_secret: str
     redirect_uri: str
+    auth_url: str = "https://logincert.anaf.ro/anaf-oauth2/v1/authorize"
+    token_url: str = "https://logincert.anaf.ro/anaf-oauth2/v1/token"
+    revoke_url: str = "https://logincert.anaf.ro/anaf-oauth2/v1/revoke"
 
 
-@dataclass(frozen=True)
-class ConnectionConfig:
-    """Tokens for maintaining an active session."""
-
-    access_token: str | None
-    refresh_token: str | None
-
-
-@dataclass(frozen=True)
-class EfacturaConfig:
-    """e-Factura API endpoints and parameters."""
-
-    upload_url: str
-    upload_url_params: list[str]
-    message_state_url: str
-    message_state_url_params: list[str]
-    message_list_url: str
-    message_list_url_params: list[str]
-    download_url: str
-    download_url_params: list[str]
-    xml_validate_url: str
-    xml2pdf_url: str
+class ConnectionSettings(BaseModel):
+    """Runtime session tokens and TLS certificate paths for the OAuth callback server."""
+    access_token: str | None = None
+    refresh_token: str | None = None
+    tls_cert_file: Path | None = None
+    tls_key_file: Path | None = None
 
 
-@dataclass(frozen=True)
-class StorageConfig:
-    """Local storage configuration."""
+class EfacturaSettings(BaseModel):
+    """ANAF e-Factura REST API endpoint URLs."""
+    upload_url: str = "https://api.anaf.ro/prod/FCTEL/rest/upload"
+    message_state_url: str = "https://api.anaf.ro/prod/FCTEL/rest/stareMesaj"
+    message_list_url: str = "https://api.anaf.ro/prod/FCTEL/rest/listaMesajeFactura"
+    download_url: str = "https://api.anaf.ro/prod/FCTEL/rest/descarcare"
+    xml_validate_url: str = "https://api.anaf.ro/prod/FCTEL/rest/validare/FACT1"
+    xml2pdf_url: str = "https://api.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA"
 
-    download_dir: Path
+
+class StorageSettings(BaseModel):
+    """Local filesystem paths and default query parameters."""
+    download_dir: Path = Path("dlds/")
+    default_cif: int = 19507820
 
 
-@dataclass(frozen=True)
-class RetryConfig:
-    """Retry configuration for network requests."""
-
+class RetrySettings(BaseModel):
+    """Retry policy for HTTP requests to ANAF APIs."""
     count: int = 3
     delay: int = 5
     backoff_factor: int = 2
     max_delay: int = 20
 
 
-@dataclass(frozen=True)
-class AppConfig:
-    """Root container for all configuration sections."""
-
-    auth: AuthConfig
-    connection: ConnectionConfig
-    efactura: EfacturaConfig
-    storage: StorageConfig
-    retry: RetryConfig
-    # Non-TOML configuration state
-    env_config_file: Path = field(repr=False)
+class LogSettings(BaseModel):
+    """Logging configuration paths."""
+    config: Path | None = None
+    file: Path | None = None
 
 
-def save_tokens(config: AppConfig, tokens: dict[str, Any]) -> None:
-    """Save the access and refresh tokens to the environment file."""
-    set_key(config.env_config_file, "LIBANAF_ACCESS_TOKEN", tokens["access_token"])
-    set_key(config.env_config_file, "LIBANAF_REFRESH_TOKEN", tokens["refresh_token"])
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="LIBANAF_",
+        env_nested_delimiter="__",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
-
-def _get_path_from_env(env_var: str, check_exists: bool = True) -> Path:
-    """Get a path from an environment variable and validate it."""
-    path_str = os.getenv(env_var)
-    if not path_str:
-        raise ValueError(f"Environment variable '{env_var}' must be set.")
-    path = Path(path_str)
-    if check_exists and not path.exists():
-        raise FileNotFoundError(f"Path from '{env_var}' does not exist: {path}")
-    return path
+    auth: AuthSettings
+    connection: ConnectionSettings = ConnectionSettings()
+    efactura: EfacturaSettings = EfacturaSettings()
+    storage: StorageSettings = StorageSettings()
+    retry: RetrySettings = RetrySettings()
+    log: LogSettings = LogSettings()
 
 
 @lru_cache(maxsize=1)
-def get_config(
-    env: str = "localhost",
-    config_file: str | Path | None = None,
-    secrets_path: str | Path | None = None,
-) -> AppConfig:
-    """
-    Load configuration from files and environment, returning a frozen AppConfig instance.
+def get_settings() -> Settings:
+    env_file = os.environ.get("LIBANAF_ENV_FILE", "secrets/.env")
+    return Settings(_env_file=env_file)
 
-    Loading precedence:
-    1. Arguments passed to this function.
-    2. Environment variables (e.g., LIBANAF_CONFIG_FILE, LIBANAF_CLIENT_ID).
-    3. Values from the TOML configuration file.
 
-    The result is cached, so subsequent calls with the same arguments will not reload files.
+def save_tokens(tokens: dict[str, Any]) -> None:
+    """Save the access and refresh tokens to the environment file.
+
+    Reads the target env-file path from the ``LIBANAF_ENV_FILE`` environment
+    variable (defaulting to ``secrets/.env``) and writes the ``access_token``
+    and ``refresh_token`` values using python-dotenv's ``set_key`` helper so
+    that the file is updated in-place without disturbing other entries.
 
     Args:
-        env: The environment name (e.g., 'localhost', 'production').
-        config_file: Path to the main TOML config file. Overrides LIBANAF_CONFIG_FILE env var.
-        secrets_path: Path to the directory containing .env files. Overrides LIBANAF_SECRETS_PATH.
-
-    Returns:
-        An immutable, nested AppConfig object.
+        tokens: Mapping that must contain ``"access_token"`` and
+            ``"refresh_token"`` string values, as returned by Authlib's
+            ``fetch_token`` / ``refresh_token`` flows.
     """
-    # 1. Determine configuration file paths
-    config_file_path = Path(config_file or _get_path_from_env("LIBANAF_CONFIG_FILE"))
-    secrets_dir_path = Path(secrets_path or _get_path_from_env("LIBANAF_SECRETS_PATH"))
-    env_file_path = secrets_dir_path / f".env.{env}"
-
-    if not env_file_path.exists():
-        raise FileNotFoundError(f"Environment file for env '{env}' not found at: {env_file_path}")
-
-    # 2. Load .env file to populate environment variables for envtoml
-    load_dotenv(env_file_path, override=True)
-
-    # 3. Load the base configuration from TOML, expanding any ${ENV_VAR} placeholders
-    #    Assuming TOML keys match dataclass field names (e.g., 'url' not 'LIBANAF_AUTH_URL').
-    #    envtoml will resolve ${ENV_VAR} placeholders within the TOML values.
-    with open(config_file_path) as f:
-        toml_config = envtoml.load(f)
-
-    # 4. Build the dataclasses, allowing environment variables to override TOML values
-    #    For fields that are *only* from env vars (like dynamic tokens), use os.getenv directly.
-    auth_cfg = AuthConfig(**toml_config["auth"])
-    conn_cfg = ConnectionConfig(**toml_config["connection"])
-    efactura_cfg = EfacturaConfig(**toml_config["efactura"])
-    storage_cfg = StorageConfig(download_dir=Path(toml_config["storage"]["download_dir"]))
-    retry_cfg = RetryConfig(**toml_config.get("retry", {}))
-
-    return AppConfig(
-        auth=auth_cfg,
-        connection=conn_cfg,
-        efactura=efactura_cfg,
-        storage=storage_cfg,
-        retry=retry_cfg,
-        env_config_file=env_file_path,
-    )
+    env_file = os.environ.get("LIBANAF_ENV_FILE", "secrets/.env")
+    set_key(env_file, "LIBANAF_CONNECTION__ACCESS_TOKEN", tokens["access_token"])
+    set_key(env_file, "LIBANAF_CONNECTION__REFRESH_TOKEN", tokens["refresh_token"])
 
 
-def setup_logging(verbose: bool = False) -> None:
+def setup_logging(verbose: bool, settings: Settings) -> None:
+    """Configure the Python logging subsystem.
+
+    Loads a JSON logging config from ``settings.log.config`` when the file
+    exists, optionally overriding the log-file ``filename`` handler entry
+    with ``settings.log.file``.  In verbose mode the console handler is
+    switched to ``DEBUG`` and HTTP-library debug logging is enabled.
+    Falls back to ``basicConfig`` when no JSON config is found.
+
+    Args:
+        verbose: When ``True``, set the console handler to DEBUG level and
+            enable low-level HTTP debug logging.
+        settings: Application settings instance used to locate the JSON
+            logging config and the target log file path.
     """
-    Setup logging for the CLI application.
-
-    This should be called from the CLI entrypoint. It is not part of the
-    core configuration loading to keep the library decoupled from logging setup.
-    """
-    logging_config_file = _get_path_from_env("LIBANAF_LOGGING_CONFIG_FILE")
-    with open(logging_config_file) as f:
-        logging_config: dict[str, Any] = json.load(f)
-
-    if verbose:
-        # For CLI, make console more verbose
-        if "console" in logging_config.get("handlers", {}):
-            logging_config["handlers"]["console"]["level"] = "DEBUG"
-        # And enable detailed HTTP logging
-        _setup_requests_logging()
-
-    logging.config.dictConfig(logging_config)
+    if settings.log.config and settings.log.config.exists():
+        with open(settings.log.config) as f:
+            cfg: dict[str, Any] = json.load(f)
+        if settings.log.file and "file" in cfg.get("handlers", {}):
+            cfg["handlers"]["file"]["filename"] = str(settings.log.file)
+        if verbose:
+            if "console" in cfg.get("handlers", {}):
+                cfg["handlers"]["console"]["level"] = "DEBUG"
+            _setup_requests_logging()
+        logging.config.dictConfig(cfg)
+    else:
+        level = logging.DEBUG if verbose else logging.INFO
+        logging.basicConfig(level=level)
+        if verbose:
+            _setup_requests_logging()
 
 
 def _setup_requests_logging() -> None:
