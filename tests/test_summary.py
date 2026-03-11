@@ -7,13 +7,7 @@ import pytest
 import typer
 from rich.console import Console
 
-from libanaf.config import (
-    AppConfig,
-    AuthConfig,
-    ConnectionConfig,
-    EfacturaConfig,
-    StorageConfig,
-)
+from libanaf.config import Settings
 from libanaf.invoices.summary import (
     build_summary_rows,
     collect_documents,
@@ -25,34 +19,15 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture()
-def dummy_config(tmp_path: Path) -> AppConfig:
-    env_file = tmp_path / ".env.test"
-    env_file.write_text("")
-
-    return AppConfig(
-        auth=AuthConfig(
-            auth_url="https://auth.example",
-            token_url="https://token.example",
-            revoke_url="https://revoke.example",
-            client_id="client",
-            client_secret="secret",
+def dummy_settings() -> Settings:
+    from libanaf.config import AuthSettings, StorageSettings
+    return Settings(
+        auth=AuthSettings(
+            client_id="test_client",
+            client_secret="test_secret",
             redirect_uri="https://redirect.example",
         ),
-        connection=ConnectionConfig(access_token=None, refresh_token=None),
-        efactura=EfacturaConfig(
-            upload_url="https://upload.example",
-            upload_url_params=[],
-            message_state_url="https://state.example",
-            message_state_url_params=[],
-            message_list_url="https://list.example",
-            message_list_url_params=[],
-            download_url="https://download.example",
-            download_url_params=[],
-            xml_validate_url="https://validate.example",
-            xml2pdf_url="https://xml2pdf.example",
-        ),
-        storage=StorageConfig(download_dir=Path("tests/fixtures")),
-        env_config_file=env_file,
+        storage=StorageSettings(download_dir=FIXTURES),
     )
 
 
@@ -89,7 +64,7 @@ def test_build_summary_rows_orders_and_signs() -> None:
     assert rows[1].payable_amount == pytest.approx(-242.0, rel=1e-6)
 
 
-def test_summarize_invoices_requires_filter(dummy_config: AppConfig) -> None:
+def test_summarize_invoices_requires_filter(dummy_settings: Settings) -> None:
     console = Console(record=True)
     with pytest.raises(typer.Exit):
         summarize_invoices(
@@ -97,19 +72,19 @@ def test_summarize_invoices_requires_filter(dummy_config: AppConfig) -> None:
             supplier_name=None,
             start_date=None,
             end_date=None,
-            config=dummy_config,
+            settings=dummy_settings,
             output=console,
         )
 
 
-def test_summarize_invoices_filters_by_date(dummy_config: AppConfig) -> None:
+def test_summarize_invoices_filters_by_date(dummy_settings: Settings) -> None:
     console = Console(record=True, width=200)
     summarize_invoices(
         invoice_number=None,
         supplier_name="NASTIMED SERV SRL",
         start_date=datetime(2025, 2, 1),
         end_date=datetime(2025, 2, 12),
-        config=dummy_config,
+        settings=dummy_settings,
         output=console,
     )
 

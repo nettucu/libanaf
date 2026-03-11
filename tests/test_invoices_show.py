@@ -11,9 +11,10 @@ from libanaf.invoices.common import DateValidationError
 
 @patch("libanaf.invoices.show.collect_documents")
 @patch("libanaf.invoices.show.display_documents_pdf_style")
-@patch("libanaf.invoices.show.get_config")
-def test_show_invoices(mock_get_config, mock_display_docs, mock_collect_docs):
+@patch("libanaf.invoices.show.get_settings")
+def test_show_invoices(mock_get_settings, mock_display_docs, mock_collect_docs):
     """Test that show_invoices calls dependencies with correct arguments."""
+    mock_get_settings.return_value = MagicMock(download_dir="/tmp")
     mock_collect_docs.return_value = [MagicMock()]
 
     show_invoices(

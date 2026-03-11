@@ -3,27 +3,36 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from libanaf.config import AppConfig, RetryConfig, get_config
+from libanaf.config import Settings, get_settings
 from libanaf.invoices.list import fetch_invoice_list
 
 
 @pytest.fixture
-def mock_config():
-    with patch("libanaf.invoices.list.get_config") as mock:
-        config = MagicMock(spec=AppConfig)
-        config.retry = RetryConfig(count=3, delay=0, backoff_factor=1, max_delay=1)  # 0 delay for speed
-        config.efactura = MagicMock()
-        config.efactura.message_list_url = "http://test.url"
-        config.auth = MagicMock()
-        mock.return_value = config
+def mock_settings():
+    with patch("libanaf.invoices.list.get_settings") as mock:
+        settings = MagicMock()
+        settings.retry.count = 3
+        settings.retry.delay = 0
+        settings.retry.backoff_factor = 1
+        settings.retry.max_delay = 1
+        settings.efactura.message_list_url = "http://test.url"
+        settings.auth.client_id = "test"
+        settings.auth.client_secret = "secret"
+        settings.auth.auth_url = "https://auth.url"
+        settings.auth.token_url = "https://token.url"
+        settings.auth.redirect_uri = "https://redirect.url"
+        settings.connection.access_token = None
+        settings.connection.refresh_token = None
+        settings.connection.tls_cert_file = None
+        settings.connection.tls_key_file = None
+        mock.return_value = settings
         yield mock
 
 
 @pytest.mark.asyncio
-async def test_fetch_invoice_list_retries(mock_config):
-    with patch("libanaf.invoices.list.make_auth_client") as mock_auth_client:
+async def test_fetch_invoice_list_retries(mock_settings):
+    with patch("libanaf.invoices.list.AnafAuthClient") as mock_auth_client_class:
         mock_client = AsyncMock()
-        # Mock get to raise exception 2 times then succeed
         mock_client.get.side_effect = [
             httpx.NetworkError("Fail 1"),
             httpx.TimeoutException("Fail 2"),
@@ -32,7 +41,7 @@ async def test_fetch_invoice_list_retries(mock_config):
 
         mock_auth_instance = MagicMock()
         mock_auth_instance.get_client.return_value = mock_client
-        mock_auth_client.return_value = mock_auth_instance
+        mock_auth_client_class.return_value = mock_auth_instance
 
         await fetch_invoice_list()
 
