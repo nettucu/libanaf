@@ -6,7 +6,6 @@ from pathlib import Path
 
 import aiofiles
 import httpx
-import typer
 from httpx import AsyncClient, HTTPStatusError, ReadTimeout, Response
 from lxml import etree
 from pydantic import ValidationError
@@ -20,28 +19,35 @@ from rich.progress import (
     TextColumn,
 )
 
-from libanaf.comms import make_auth_client
-from libanaf.config import AppConfig, get_config
+from libanaf.auth import AnafAuthClient
+from libanaf.config import get_settings
 
-from ..ubl.ubl_document import parse_ubl_document
+from libanaf.ubl.ubl_document import parse_ubl_document
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
 async def get_pdf_path(xml_path: Path) -> Path:
+    """Determine the output PDF path for a given XML invoice file.
+
+    Parses the UBL document at ``xml_path`` to extract a human-friendly
+    filename (supplier + number + date).  Falls back to the XML stem with
+    a ``.pdf`` extension if parsing fails for any reason.
+
+    Args:
+        xml_path: Path to the UBL XML invoice file.
+
+    Returns:
+        Path: The resolved output PDF path (same directory as ``xml_path``).
+    """
     outfname = xml_path.stem + ".pdf"
 
     try:
-        # Avoid async file IO; parsing directly from path is faster and sufficient here.
         document = parse_ubl_document(xml_path)
 
         if document is not None:
             fname = document.tofname()
             outfname = xml_path.stem + "_" + fname + ".pdf"
-
-        # if invoice.has_attachment():
-        #     invoice.write_attachment(xml_path.parent / outfname)
-        #     return None
 
     except ValidationError as e:
         logger.error(f"Invoice {xml_path}: {e}", exc_info=e)
@@ -50,7 +56,6 @@ async def get_pdf_path(xml_path: Path) -> Path:
     except ParsingError as e:
         logger.error(f"XML Parse error {xml_path}: {e}", exc_info=e)
     except asyncio.CancelledError as e:
-        # TODO: should we treat this specially or not ?
         logger.error(f"asyncio ERROR {xml_path}", exc_info=e)
         pass
     except Exception as e:
@@ -67,18 +72,29 @@ async def convert_to_pdf(
     progress: Progress,
     taskid,
 ) -> str:
-    """Calls the ANAF API service to convert XML invoices to PDF
+    """Call the ANAF API service to convert an XML invoice to PDF.
+
+    Posts the content of ``xml`` to the ANAF xml2pdf endpoint with retry
+    logic, writing the resulting PDF bytes to ``pdf``. Concurrency is
+    throttled via ``semaphore``.
 
     Args:
-        xml (Path): The XML file to be uploaded
-        pdf (Path): The output path of the PDF received
+        client: Authenticated `httpx.AsyncClient` to use for the request.
+        xml: Path to the UBL XML file to convert.
+        pdf: Destination path for the generated PDF.
+        semaphore: Semaphore limiting concurrent conversions.
+        progress: Rich `Progress` instance for reporting.
+        taskid: Progress task identifier to advance on success.
+
+    Returns:
+        str: ``"SUCCESS: <xml>"`` on success, or a short error description.
     """
-    config: AppConfig = get_config()
+    settings = get_settings()
 
     async with semaphore:
         await asyncio.sleep(0.5)
 
-        url = config.efactura.xml2pdf_url
+        url = settings.efactura.xml2pdf_url
         headers = {"Content-Type": "text/plain"}
         async with aiofiles.open(xml) as f:
             data = await f.read()
@@ -94,9 +110,11 @@ async def convert_to_pdf(
         response: Response | None = None
         try:
             async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(config.retry.count),
+                stop=stop_after_attempt(settings.retry.count),
                 wait=wait_exponential(
-                    multiplier=config.retry.backoff_factor, min=config.retry.delay, max=config.retry.max_delay
+                    multiplier=settings.retry.backoff_factor,
+                    min=settings.retry.delay,
+                    max=settings.retry.max_delay,
                 ),
                 retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
                 before_sleep=before_sleep_log(logger, logging.WARNING),
@@ -113,38 +131,53 @@ async def convert_to_pdf(
             return f"Error: No response for {xml}"
 
         if response.status_code != 200:
-            # Should be caught by raise_for_status, but keeping valid check
             logger.error(f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}")
             return f"Unexpected HTTP status code {response.status_code} {response.reason_phrase}"
 
         content_type = response.headers["content-type"]
         if any(s in content_type for s in ("application/json", "text/plain")):
-            # we have a content_type which suggests the response is actually an error
             try:
                 message = response.json()
                 logger.error(f"Error received downloading: {url} - {message['eroare']}")
                 return f"Error: {message.get('eroare', message)}"
             except json.JSONDecodeError:
-                # this should not happen
                 logger.error(f"Unknow error for url: {url}")
                 return f"Unknow error for url: {url}"
 
-        # Theoretically here all should be well
         async with aiofiles.open(pdf, "wb") as pdf_file:
             await pdf_file.write(response.content)
 
-        # progress.console.log(f"Processing {xml}")
         progress.update(task_id=taskid, file=xml, advance=1, refresh=True)
 
     return f"SUCCESS: {xml}"
 
 
 async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: asyncio.Semaphore) -> None:
+    """Process a batch of XML→PDF conversions asynchronously.
+
+    Builds an authenticated ANAF HTTP client, then fans out ``convert_to_pdf``
+    coroutines for every entry in ``files_to_process``, using ``semaphore`` to
+    cap concurrent requests.
+
+    Args:
+        files_to_process: Mapping of XML source path → PDF destination path.
+        semaphore: Semaphore controlling maximum concurrent ANAF API calls.
+    """
     console = Console()
 
     try:
-        config: AppConfig = get_config()
-        httpx_client: AsyncClient = make_auth_client(config).get_client()
+        settings = get_settings()
+        httpx_client: AsyncClient = AnafAuthClient(
+            client_id=settings.auth.client_id,
+            client_secret=settings.auth.client_secret,
+            auth_url=settings.auth.auth_url,
+            token_url=settings.auth.token_url,
+            redirect_uri=settings.auth.redirect_uri,
+            access_token=settings.connection.access_token,
+            refresh_token=settings.connection.refresh_token,
+            cert_file=settings.connection.tls_cert_file,
+            key_file=settings.connection.tls_key_file,
+        ).get_client()
 
         with Progress(
             SpinnerColumn(),
@@ -181,19 +214,14 @@ async def process_invoices_async(files_to_process: dict[Path, Path], semaphore: 
     except ReadTimeout as e:
         console.log(f"[bold red]HTTP Timeout occured:[/bold red]. Ignoring ... {e}")
         logger.error(f"HTTP Timeout occured: {e}", exc_info=e, stack_info=True)
-        await asyncio.sleep(5)  # sleep additional 5 seconds to cool ANAF down :)
+        await asyncio.sleep(5)
     except Exception as e:
         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
         console.print(f"[bold red]An error occurred:[/bold red] {e}")
 
 
 def _format_xml_file(xml_path: Path) -> None:
-    """Pretty-print an XML file using lxml similar to ``xmllint --format``.
-
-    Args:
-        xml_path (Path): Destination XML file that requires formatting.
-    """
-
+    """Pretty-print an XML file using lxml similar to ``xmllint --format``."""
     parser = etree.XMLParser(remove_blank_text=True)
 
     try:
@@ -209,42 +237,44 @@ def _format_xml_file(xml_path: Path) -> None:
 
 
 def unzip_invoices(download_dir: Path) -> None:
-    """Extract invoices and format any XML payloads located in the download directory.
+    """Extract invoice ZIP archives and format any embedded XML files.
+
+    Iterates over all ``*.zip`` files in ``download_dir``, extracting each
+    member (except signature files) to a flat location in the same directory,
+    prefixing the member filename with the archive stem. Any extracted XML
+    file is pretty-printed in-place using lxml.
 
     Args:
-        download_dir (Path): Directory containing raw invoice archives.
+        download_dir: Directory containing the downloaded ZIP archives.
     """
-
     for zip_file in download_dir.glob("*.zip"):
         try:
             with zipfile.ZipFile(zip_file, "r") as zip_handle:
                 for member_info in zip_handle.infolist():
                     if member_info.filename.startswith("semnatura"):
-                        # ignore XML signature file
                         continue
 
                     new_dest = download_dir / (zip_file.stem + "_" + member_info.filename)
                     if not new_dest.exists():
-                        typer.echo(
-                            f"Extracting {member_info.filename} to {new_dest}",
-                            color=True,
-                        )
+                        logger.info(f"Extracting {member_info.filename} to {new_dest}")
                         extracted = Path(zip_handle.extract(member=member_info, path=download_dir))
                         extracted.rename(new_dest)
                         if new_dest.suffix.lower() == ".xml":
                             _format_xml_file(new_dest)
         except zipfile.BadZipFile as e:
-            # the zip file is malformed
             logger.error(f"Zip File {zip_file} is malformed: {e}. Moving on ...")
 
 
 def process_invoices():
-    """
-    Process downloaded invoices: unpack the zip file and convert XML to PDF.
-    """
-    config: AppConfig = get_config()
+    """Process downloaded invoices: unzip archives and convert XML to PDF.
 
-    download_dir = config.storage.download_dir
+    Reads the download directory from settings, calls ``unzip_invoices`` to
+    extract all ZIP files, then converts any XML files without a corresponding
+    PDF to PDF via the ANAF API.
+    """
+    settings = get_settings()
+
+    download_dir = settings.storage.download_dir
 
     unzip_invoices(download_dir=download_dir)
 

@@ -10,65 +10,56 @@ from httpx import HTTPStatusError, Response
 from rich.console import Console
 from rich.table import Table
 
-from ..auth import LibANAF_AuthClient  # Keep for type hinting
-from ..comms import make_auth_client  # This will now take config
-from ..config import AppConfig, get_config
-from ..exceptions import AnafRequestError
-from ..types import Filter
+from libanaf.auth import AnafAuthClient
+from libanaf.config import get_settings
+from libanaf.exceptions import AnafRequestError
+from libanaf.types import Filter
 
 console = Console()
 
 logger = logging.getLogger(__name__)
 
 
-##
-## {
-# "mesaje": [
-#     {
-#         "data_creare": "202403290821",
-#         "cif": "19507820",
-#         "id_solicitare": "4225290319",
-#         "detalii": "Factura cu id_incarcare=4225290319 emisa de cif_emitent=8939059 pentru cif_beneficiar=19507820",
-#         "tip": "FACTURA PRIMITA",
-#         "id": "3347056845"
-#     },
-##
 async def fetch_invoice_list(
     days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P
 ) -> dict[str, str | list[dict[str, str]]]:
-    config: AppConfig = get_config()
-    # Apply dynamic config for retries if we were using tenacity.Retrying, but since we are using decorator,
-    # we might need to rely on the hardcoded defaults requested 5s->10s->20s which matches min=5, multiplier=2 (5, 10, 20).
-    # Wait, wait_exponential(multiplier=1, min=5) -> 5, 10, 20?
-    # multiplier applied to 2^x.
-    # attempt 1: 2^0 * mult = 1 * mult. If min=5, it waits 5.
-    # attempt 2: 2^1 * mult = 2 * mult.
-    # To get 5, 10, 20:
-    #  x=0, wait=5.
-    #  x=1, wait=10.
-    #  x=2, wait=20.
-    # This implies 5 * 2^x. So multiplier=5, exp_base=2.
-    # tenacity wait_exponential(multiplier=5, ...)
+    """Fetch the invoice message list from the ANAF e-Factura API.
 
-    # Let's fix the decorator parameters above.
+    Builds an authenticated OAuth2 client and issues a GET request to the
+    ``listaMesajeFactura`` endpoint. Retries on transient network or HTTP
+    errors using exponential backoff configured from settings.
 
-    base_url: str = config.efactura.message_list_url
+    Args:
+        days: Number of past days to include in the query (1–60). Defaults to 60.
+        cif: Company CIF to query. Defaults to 19507820.
+        filter: Message type filter (E, T, P, R). Defaults to `Filter.P`.
+
+    Returns:
+        dict: Parsed JSON response containing a ``"mesaje"`` list of message dicts.
+
+    Raises:
+        AnafRequestError: On HTTP errors, timeouts, network errors, or when the
+            API returns an ``"eroare"`` field in the response body.
+    """
+    settings = get_settings()
+
+    base_url: str = settings.efactura.message_list_url
 
     params: dict[str, str] = {"zile": str(days), "cif": str(cif)}
     if filter:
         params["filtru"] = filter.value
 
-    # headers = {
-    #     "Authorization": f"Bearer {access_token}"
-    # }
-
-    # response = requests.get(base_url, params=params, headers=headers)
-
-    # RO23INGB0001000000000222
-    # CC750124842
-    # 651415973
-
-    auth_client: LibANAF_AuthClient = make_auth_client(config)
+    auth_client = AnafAuthClient(
+        client_id=settings.auth.client_id,
+        client_secret=settings.auth.client_secret,
+        auth_url=settings.auth.auth_url,
+        token_url=settings.auth.token_url,
+        redirect_uri=settings.auth.redirect_uri,
+        access_token=settings.connection.access_token,
+        refresh_token=settings.connection.refresh_token,
+        cert_file=settings.connection.tls_cert_file,
+        key_file=settings.connection.tls_key_file,
+    )
     client: AsyncOAuth2Client = auth_client.get_client()
 
     try:
@@ -81,9 +72,9 @@ async def fetch_invoice_list(
         )
 
         async for attempt in AsyncRetrying(
-            stop=stop_after_attempt(config.retry.count),
+            stop=stop_after_attempt(settings.retry.count),
             wait=wait_exponential(
-                multiplier=config.retry.backoff_factor, min=config.retry.delay, max=config.retry.max_delay
+                multiplier=settings.retry.backoff_factor, min=settings.retry.delay, max=settings.retry.max_delay
             ),
             retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
             before_sleep=before_sleep_log(logger, logging.WARNING),
@@ -112,13 +103,27 @@ async def fetch_invoice_list(
     if "eroare" in response_data:
         console.log(f"Error: {response_data['eroare']}", style="bold red")
         logger.error(f"Error: {response_data['eroare']}")
-        # Raise generic error if API returns error field even with 200 OK
         raise AnafRequestError(f"ANAF API Error: {response_data['eroare']}")
 
     return response_data
 
 
 def list_invoices(days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P) -> None:
+    """Fetch and display the ANAF invoice list in a Rich table.
+
+    Thin synchronous wrapper around ``fetch_invoice_list`` that runs the
+    coroutine on the current event loop and delegates rendering to
+    ``display_invoices``.
+
+    Args:
+        days: Number of past days to query. Defaults to 60.
+        cif: Company CIF to query. Defaults to 19507820.
+        filter: Message type filter. Defaults to `Filter.P`.
+
+    Raises:
+        AnafRequestError: Propagated from ``fetch_invoice_list`` on API errors.
+        Exception: Any other unexpected error is logged and re-raised.
+    """
     try:
         import asyncio
 
@@ -129,11 +134,8 @@ def list_invoices(days: int | None = 60, cif: int | None = 19507820, filter: Fil
         ] = fetch_invoice_list
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
 
-        # data = loop.run_until_complete(fetch_invoice_list(days, cif, filter))
-
         display_invoices(data)
     except AnafRequestError as e:
-        # Re-raise to be handled by CLI app wrapper
         logger.error(f"Failed to list invoices: {e}")
         raise e
     except Exception as e:
@@ -151,15 +153,12 @@ def display_invoices(data: dict) -> None:
     table.add_column("Id", justify="center")
 
     for mesaj in data.get("mesaje", []):
-        data_creare = datetime.strptime(mesaj["data_creare"], "%Y%m%d%H%M").strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )  # mesaj["data_creare"]
+        data_creare = datetime.strptime(mesaj["data_creare"], "%Y%m%d%H%M").strftime("%Y-%m-%d %H:%M:%S")
         id_solicitare = mesaj["id_solicitare"]
         detalii = mesaj["detalii"]
         tip = mesaj["tip"]
         id_ = mesaj["id"]
 
-        # Extract id_incarcare and cif_emitent from detalii
         id_incarcare: str = ""
         cif_emitent: str = ""
         details_parts = detalii.split()

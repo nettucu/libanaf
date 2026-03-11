@@ -16,25 +16,12 @@ from rich.progress import (
 )
 
 from libanaf.types import Filter
-
-from ..auth import LibANAF_AuthClient  # Keep for type hinting
-from ..comms import make_auth_client  # This will now take config
-from ..config import AppConfig, get_config
-from ._utils import is_invoice_downloaded
-from .list import fetch_invoice_list
+from libanaf.auth import AnafAuthClient
+from libanaf.config import get_settings
+from libanaf.invoices._utils import is_invoice_downloaded
+from libanaf.invoices.list import fetch_invoice_list
 
 logger: logging.Logger = logging.getLogger(__name__)
-
-#  165   0000: HTTP/1.1 200
-#  167   0000: Date: Thu, 13 Jun 2024 16:44:19 GMT
-#  169   0000: Content-Type: text/plain;charset=UTF-8
-#  171   0000: Content-Length: 92
-#  173   0000: Connection: keep-alive
-#  175   0000: Strict-Transport-Security: max-age=31536000; includeSubDomains
-#
-#  196   19:44:19.267781 <= Recv data, 92 bytes (0x5c)
-#  197   0000: {"eroare":"Pentru id=4596 nu exista inregistrata nici o factura"
-#  198   0040: ,"titlu":"Descarcare mesaj"}
 
 
 async def download_invoice(
@@ -64,12 +51,11 @@ async def download_invoice(
         OSError: If writing the downloaded file to disk fails.
         httpx.RequestError: On underlying transport errors while performing the request.
     """
-    config: AppConfig = get_config()  # Get the AppConfig instance
+    settings = get_settings()
 
     async with semaphore:
-        await asyncio.sleep(0.1)  # Add a delay of ~1 second before starting the download
-        #  https://api.anaf.ro/prod/FCTEL/rest/descarcare?id={invoice_id}
-        url_base = config.efactura.download_url
+        await asyncio.sleep(0.1)
+        url_base = settings.efactura.download_url
         url: str = f"{url_base}?id={invoice_id}"
         logger.debug(f"Downloading from: {url}")
 
@@ -84,9 +70,11 @@ async def download_invoice(
         response: Response | None = None
         try:
             async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(config.retry.count),
+                stop=stop_after_attempt(settings.retry.count),
                 wait=wait_exponential(
-                    multiplier=config.retry.backoff_factor, min=config.retry.delay, max=config.retry.max_delay
+                    multiplier=settings.retry.backoff_factor,
+                    min=settings.retry.delay,
+                    max=settings.retry.max_delay,
                 ),
                 retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
                 before_sleep=before_sleep_log(logger, logging.WARNING),
@@ -109,20 +97,18 @@ async def download_invoice(
 
         content_type = response.headers["content-type"]
         if any(s in content_type for s in ("application/json", "text/plain")):
-            # we have a content_type which suggests the response is actually an error
             try:
                 message = response.json()
                 logger.error(f"Error received downloading: {url} - {message['eroare']}")
                 return message
             except json.JSONDecodeError:
-                # this should not happen
                 logger.error(f"Unknow error for url: {url}")
                 return f"Unknow error for url: {url}"
 
         file_path: Path = download_dir / f"{invoice_id}.zip"
         with open(file_path, "wb") as file:
             file.write(response.content)
-            progress.update(task_id, advance=1, refresh=True)  # len(response.content))
+            progress.update(task_id, advance=1, refresh=True)
 
         return file_path
 
@@ -132,23 +118,29 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
 
     Creates an authenticated HTTP client, sets up a progress display, and
     downloads all invoices listed in ``invoices_to_download`` with a
-    concurrency limit. Progress is reported using a single overall task.
+    concurrency limit of 5. Progress is reported via a single overall task.
 
     Args:
         invoices_to_download: List of invoice/message IDs to download.
         download_dir: Destination directory for the downloaded ZIP files.
 
-    Returns:
-        None
-
     Raises:
         httpx.RequestError: If network/transport errors occur during requests.
         OSError: If saving any file to disk fails.
     """
-    config: AppConfig = get_config()
-    semaphore = asyncio.Semaphore(5)  # Limit to 5 concurrent downloads
-    auth_client: LibANAF_AuthClient = make_auth_client(config)
-    # httpx: AsyncOAuth2Client = auth_client.get_client()
+    settings = get_settings()
+    semaphore = asyncio.Semaphore(5)
+    auth_client = AnafAuthClient(
+        client_id=settings.auth.client_id,
+        client_secret=settings.auth.client_secret,
+        auth_url=settings.auth.auth_url,
+        token_url=settings.auth.token_url,
+        redirect_uri=settings.auth.redirect_uri,
+        access_token=settings.connection.access_token,
+        refresh_token=settings.connection.refresh_token,
+        cert_file=settings.connection.tls_cert_file,
+        key_file=settings.connection.tls_key_file,
+    )
 
     async with auth_client.get_client() as client:
         with Progress(
@@ -159,7 +151,6 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
             TextColumn("[progress.percentage]{task.percentage:>3.1f}%"),
             transient=False,
         ) as progress:
-            # tasks = []
             overall_progress = progress.add_task("Overall progress", total=len(invoices_to_download))
             progress.start_task(overall_progress)
 
@@ -169,15 +160,9 @@ async def download_all_invoices(invoices_to_download: list[str], download_dir: P
                 )
                 for invoice_id in invoices_to_download
             ]
-            # for invoice_id in invoices_to_download:
-            #     # task_id = progress.add_task(f"Downloading {invoice_id}", total=100)
-            #     task = download_invoice(client, invoice_id, download_dir, progress, task_id=None, semaphore=semaphore)
-            #     tasks.append(task)
 
             results = await asyncio.gather(*tasks)
             logger.debug(f"Downloaded files: {results}")
-            # for _ in results:
-            #     progress.update(overall_progress, advance=1)
 
 
 def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter | None = Filter.P) -> None:
@@ -189,20 +174,13 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
     reports errors to the console.
 
     Args:
-        days: Number of past days to query for messages. Defaults to 60.
+        days: Number of past days to query for messages. Defaults to 30.
         cif: Company CIF used for filtering. Defaults to 19507820.
         filter: Additional filter applied to the message list (see `Filter`).
-
-    Returns:
-        None
-
-    Notes:
-        This function handles common HTTP errors and unexpected exceptions by
-        reporting them to the console instead of raising.
     """
     console = Console()
-    config: AppConfig = get_config()
-    download_dir = config.storage.download_dir
+    settings = get_settings()
+    download_dir = settings.storage.download_dir
     download_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -212,7 +190,6 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
             fetch_invoice_list
         )
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
-        # data = loop.run_until_complete(fetch_invoice_list(days, cif, filter))
         messages: str | list[dict[str, str]] = data.get("mesaje", [])
 
         if not messages:
@@ -220,7 +197,7 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
             return
 
         invoices_to_download: list[str] = []
-        if isinstance(messages, list):  # noqa: E999
+        if isinstance(messages, list):
             invoices_to_download = [
                 message["id"] for message in messages if not is_invoice_downloaded(message, download_dir)
             ]

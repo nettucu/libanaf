@@ -19,12 +19,12 @@ from rich.panel import Panel
 from rich.text import Text
 from rich.align import Align
 
-from ..config import get_config, AppConfig
-from .query import collect_documents
-from ..ubl.cac import Party, CreditNoteLine, InvoiceLine
-from ..ubl.credit_note import CreditNote
-from ..ubl.invoice import Invoice
-from .common import DateValidationError, ensure_date_range
+from libanaf.config import get_settings
+from libanaf.invoices.query import collect_documents
+from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
+from libanaf.ubl.credit_note import CreditNote
+from libanaf.ubl.invoice import Invoice
+from libanaf.invoices.common import DateValidationError, ensure_date_range
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -68,8 +68,8 @@ def show_invoices(
             console.print("❌ [bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
-    config: AppConfig = get_config()
-    dlds_dir = config.storage.download_dir
+    settings = get_settings()
+    dlds_dir = settings.storage.download_dir
 
     search_dir = Path(dlds_dir).resolve()
     logger.debug(f"product-summary collect_documents: dir={search_dir}")

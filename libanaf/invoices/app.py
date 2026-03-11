@@ -6,18 +6,18 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-from ..config import get_config
-from ..exceptions import AnafRequestError
-from ..types import Filter
-from .common import DateValidationError, ensure_date_range
-from .download import download
-from .list import list_invoices
-from .pdf_render import render_invoice_pdf
-from .process import process_invoices
-from .product_summary import summarize_products
-from .query import collect_documents
-from .show import show_invoices
-from .summary import summarize_invoices
+from libanaf.config import get_settings
+from libanaf.exceptions import AnafRequestError
+from libanaf.types import Filter
+from libanaf.invoices.common import DateValidationError, ensure_date_range
+from libanaf.invoices.download import download
+from libanaf.invoices.list import list_invoices
+from libanaf.invoices.pdf_render import render_invoice_pdf
+from libanaf.invoices.process import process_invoices
+from libanaf.invoices.product_summary import summarize_products
+from libanaf.invoices.query import collect_documents
+from libanaf.invoices.show import show_invoices
+from libanaf.invoices.summary import summarize_invoices
 
 app = typer.Typer()
 
@@ -135,7 +135,6 @@ def invoices_download(
     """
     Download missing invoices and store them locally.
     """
-    typer.echo(f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}")
     logger.info(f"Starting invoice download for the last {days} days for CIF: {cif} and filter {filter}")
     download(days, cif, filter)
 
@@ -147,7 +146,6 @@ def invoices_process() -> None:
     1. Unzips the files and extract the XML of the invoices
     2. Uses the ANAF API to convert the files to PDF
     """
-    typer.echo("Starting processing ...")
     logger.info("Starting processing ...")
     process_invoices()
 
@@ -180,8 +178,8 @@ def render_pdf(
             console.print("❌ [bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
-    config = get_config()
-    dlds_dir = Path(config.storage.download_dir).resolve()
+    settings = get_settings()
+    dlds_dir = Path(settings.storage.download_dir).resolve()
 
     logger.info(
         "render-pdf: invoice_number=%s supplier_name=%s start=%s end=%s dir=%s",

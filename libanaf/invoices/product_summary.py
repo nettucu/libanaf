@@ -20,18 +20,18 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..config import AppConfig, get_config
-from ..types import UNIT_CODES
-from ..ubl.cac import CreditNoteLine, InvoiceLine
-from ..ubl.credit_note import CreditNote
-from ..ubl.invoice import Invoice
-from .common import (
+from libanaf.config import Settings, get_settings
+from libanaf.types import UNIT_CODES
+from libanaf.ubl.cac import CreditNoteLine, InvoiceLine
+from libanaf.ubl.credit_note import CreditNote
+from libanaf.ubl.invoice import Invoice
+from libanaf.invoices.common import (
     DateValidationError,
     ensure_date_range,
     extract_supplier_name,
     format_currency,
 )
-from .query import collect_documents
+from libanaf.invoices.query import collect_documents
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ def summarize_products(
     end_date: date | datetime | None,
     render_output: bool = True,
     *,
-    config: AppConfig | None = None,
+    settings: Settings | None = None,
     output: Console | None = None,
 ) -> list[ProductSummaryRow] | None:
     """Render a Rich table with product-level figures for matching documents."""
@@ -98,8 +98,8 @@ def summarize_products(
             product_console.print("❌ [bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
-    app_config = config or get_config()
-    dlds_dir = app_config.storage.download_dir
+    app_settings = settings or get_settings()
+    dlds_dir = app_settings.storage.download_dir
     logger.debug(
         f"product-summary: collect_documents: dir {dlds_dir} "
         f"invoice_number={invoice_number} supplier_name={supplier_name} start={start} end={end}"

@@ -16,16 +16,16 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..config import AppConfig, get_config
-from ..ubl.credit_note import CreditNote
-from ..ubl.invoice import Invoice
-from .common import (
+from libanaf.config import Settings, get_settings
+from libanaf.ubl.credit_note import CreditNote
+from libanaf.ubl.invoice import Invoice
+from libanaf.invoices.common import (
     DateValidationError,
     ensure_date_range,
     extract_supplier_name,
     format_currency,
 )
-from .query import collect_documents
+from libanaf.invoices.query import collect_documents
 
 logger = logging.getLogger(__name__)
 DEFAULT_CONSOLE = Console()
@@ -50,7 +50,7 @@ def summarize_invoices(
     start_date: date | datetime | None,
     end_date: date | datetime | None,
     *,
-    config: AppConfig | None = None,
+    settings: Settings | None = None,
     output: Console | None = None,
 ) -> None:
     """Render a Rich table summarising matching invoices/credit notes."""
@@ -76,8 +76,8 @@ def summarize_invoices(
             summary_console.print("[bold red]Error: invalid date range.[/bold red]")
         raise typer.Exit(code=1)
 
-    app_config = config or get_config()
-    dlds_dir = app_config.storage.download_dir
+    app_settings = settings or get_settings()
+    dlds_dir = app_settings.storage.download_dir
     logger.debug("summary: using download dir %s", dlds_dir)
 
     search_dir = Path(dlds_dir).resolve()

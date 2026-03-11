@@ -24,8 +24,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from ..ubl.credit_note import CreditNote
-from ..ubl.invoice import Invoice
+from libanaf.ubl.credit_note import CreditNote
+from libanaf.ubl.invoice import Invoice
 
 logger = logging.getLogger(__name__)
 

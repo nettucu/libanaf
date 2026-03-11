@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from ..ubl.cac import Party
-from ..ubl.credit_note import CreditNote
-from ..ubl.invoice import Invoice
+from libanaf.ubl.cac import Party
+from libanaf.ubl.credit_note import CreditNote
+from libanaf.ubl.invoice import Invoice
 
 DocumentType = Invoice | CreditNote
 
