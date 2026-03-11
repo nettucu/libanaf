@@ -52,8 +52,8 @@ class OAuthCallbackServer:
         """
         q = Queue()
 
-        @Request.application
-        def code_request(request: Request):
+        @Request.application  # type: ignore[arg-type]
+        def code_request(request: Request) -> Response:
             """Handle the redirect from ANAF with the authorization result."""
             logger.debug(request)
             logger.debug(f"request.headers = {request.headers}")
@@ -70,6 +70,9 @@ class OAuthCallbackServer:
                     f"Authorization code received: {request.args['code']}",
                     mimetype="text/plain",
                 )
+            
+            logger.warning("Unrecognized request received, missing 'code' or 'error' argument.")
+            return Response("Bad Request: missing 'code' or 'error'", status=400, mimetype="text/plain")
 
         logger.debug(f"Starting server on {self.host}:{self.port}, SSL={self.use_ssl}")
         if self.use_ssl:
