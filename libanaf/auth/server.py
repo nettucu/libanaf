@@ -59,20 +59,23 @@ class OAuthCallbackServer:
             logger.debug(f"request.headers = {request.headers}")
             logger.debug(f"request.args = {request.args}")
 
-            q.put(request.args)
-
             if "error" in request.args:
                 logger.error(f"Error received: {request.args['error']}")
-                return Response(f"Error occured: {request.args['error']}", mimetype="text/plain")
-            elif "code" in request.args:
+                q.put(request.args)
+                return Response(f"Error occurred: {request.args['error']}", mimetype="text/plain")
+
+            if "code" in request.args:
                 logger.debug(f"Auth code: {request.args['code']}")
+                q.put(request.args)
                 return Response(
-                    f"Authorization code received: {request.args['code']}",
+                    "Authorization successful. You may close this tab.",
                     mimetype="text/plain",
                 )
-            
-            logger.warning("Unrecognized request received, missing 'code' or 'error' argument.")
-            return Response("Bad Request: missing 'code' or 'error'", status=400, mimetype="text/plain")
+
+            # Ignore unrecognised requests (e.g. browser favicon fetches) —
+            # do NOT put anything on the queue so the server keeps waiting.
+            logger.debug(f"Ignoring non-OAuth request: {request.path}")
+            return Response("", status=204, mimetype="text/plain")
 
         logger.debug(f"Starting server on {self.host}:{self.port}, SSL={self.use_ssl}")
         if self.use_ssl:

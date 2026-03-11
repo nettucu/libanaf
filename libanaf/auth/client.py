@@ -50,6 +50,7 @@ class AnafAuthClient:
         self.refresh_token = refresh_token
         self.cert_file = cert_file
         self.key_file = key_file
+        self.oauth_state: str | None = None
 
         self._make_client()
 
@@ -128,7 +129,9 @@ class AnafAuthClient:
         """Run the consent flow and exchange the code for a token.
 
         Raises:
-            AuthorizationError: If the authorization server returns an error.
+            AuthorizationError: If the authorization server returns an error
+                or if the state parameter in the callback does not match the
+                one generated at authorization-URL creation time (CSRF check).
 
         Returns:
             dict: The token payload returned by the token endpoint.
@@ -138,6 +141,11 @@ class AnafAuthClient:
         if "error" in auth_response:
             logger.error(f"Authorization code error: {auth_response['error']}")
             raise AuthorizationError(auth_response["error"])
+
+        returned_state = auth_response.get("state")
+        if returned_state != self.oauth_state:
+            logger.error(f"State mismatch: expected {self.oauth_state!r}, got {returned_state!r}")
+            raise AuthorizationError("state_mismatch")
 
         auth_code = auth_response["code"]
         logger.debug(f"Authorization code: {auth_code}")
