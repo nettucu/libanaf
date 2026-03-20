@@ -24,6 +24,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from libanaf.invoices.common import format_money as _fmt_money
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
 
@@ -128,12 +129,6 @@ def _p(
         alignment=align,
     )
     return Paragraph(safe, style)
-
-
-def _fmt_money(value: float | None, cur: str = "RON") -> str:
-    if value is None:
-        return ""
-    return f"{value:,.2f} {cur}"
 
 
 def _fmt_qty(value: float | int | None) -> str:

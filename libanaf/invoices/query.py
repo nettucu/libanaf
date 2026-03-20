@@ -44,17 +44,11 @@ def _parse_and_filter_file(
         return None
     if supplier_name:
         supplier = doc.accounting_supplier_party.party
-        if (
-            supplier.party_name is not None
-            and supplier.party_name.name is not None
-            and supplier_name.lower() not in supplier.party_name.name.lower()
-        ):
-            return None
-        if (
-            supplier.party_legal_entity is not None
-            and supplier.party_legal_entity.registration_name is not None
-            and supplier_name.lower() not in supplier.party_legal_entity.registration_name.lower()
-        ):
+        candidate_names = [
+            supplier.party_name.name if supplier.party_name else None,
+            supplier.party_legal_entity.registration_name if supplier.party_legal_entity else None,
+        ]
+        if not any(n and supplier_name.lower() in n.lower() for n in candidate_names):
             return None
 
     return doc

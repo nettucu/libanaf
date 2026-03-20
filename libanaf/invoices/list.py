@@ -13,6 +13,7 @@ from rich.table import Table
 from libanaf.auth import AnafAuthClient
 from libanaf.config import get_settings
 from libanaf.exceptions import AnafRequestError
+from libanaf.invoices._retry import anaf_retrying
 from libanaf.types import Filter
 
 console = Console()
@@ -63,23 +64,7 @@ async def fetch_invoice_list(
     client: AsyncOAuth2Client = auth_client.get_client()
 
     try:
-        from tenacity import (
-            AsyncRetrying,
-            before_sleep_log,
-            retry_if_exception_type,
-            stop_after_attempt,
-            wait_exponential,
-        )
-
-        async for attempt in AsyncRetrying(
-            stop=stop_after_attempt(settings.retry.count),
-            wait=wait_exponential(
-                multiplier=settings.retry.backoff_factor, min=settings.retry.delay, max=settings.retry.max_delay
-            ),
-            retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
-            before_sleep=before_sleep_log(logger, logging.WARNING),
-            reraise=True,
-        ):
+        async for attempt in anaf_retrying(settings.retry, logger):
             with attempt:
                 response: Response = await client.get(url=base_url, params=params)
                 response.raise_for_status()

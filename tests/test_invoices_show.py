@@ -42,12 +42,13 @@ def test_show_invoices_date_validation_error(mock_ensure_date_range):
         show_invoices(None, None, datetime(2025, 1, 1), None)
 
 
-from libanaf.invoices.show import _format_money, _format_qty, _format_percent, get_supplier_str
+from libanaf.invoices.common import format_money, format_percent
+from libanaf.invoices.show import _format_qty, get_supplier_str
 
 def test_format_money():
-    """Test the _format_money function."""
-    assert _format_money(1234.56, "RON") == "1,234.56 RON"
-    assert _format_money(None, "RON") == ""
+    """Test the format_money function."""
+    assert format_money(1234.56, "RON") == "1,234.56 RON"
+    assert format_money(None, "RON") == ""
 
 def test_format_qty():
     """Test the _format_qty function."""
@@ -55,9 +56,9 @@ def test_format_qty():
     assert _format_qty(None) == ""
 
 def test_format_percent():
-    """Test the _format_percent function."""
-    assert _format_percent(19.0) == "19%"
-    assert _format_percent(None) == "0%"
+    """Test the format_percent function."""
+    assert format_percent(19.0) == "19%"
+    assert format_percent(None) == "0%"
 
 def test_get_supplier_str():
     """Test the get_supplier_str function."""

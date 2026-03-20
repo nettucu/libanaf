@@ -21,13 +21,13 @@ from rich.progress import (
 
 from libanaf.auth import AnafAuthClient
 from libanaf.config import get_settings
-
+from libanaf.invoices._retry import anaf_retrying
 from libanaf.ubl.ubl_document import parse_ubl_document
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-async def get_pdf_path(xml_path: Path) -> Path:
+def get_pdf_path(xml_path: Path) -> Path:
     """Determine the output PDF path for a given XML invoice file.
 
     Parses the UBL document at ``xml_path`` to extract a human-friendly
@@ -55,9 +55,6 @@ async def get_pdf_path(xml_path: Path) -> Path:
         logger.error(f"XML Syntax error {xml_path}: {e}", exc_info=e)
     except ParsingError as e:
         logger.error(f"XML Parse error {xml_path}: {e}", exc_info=e)
-    except asyncio.CancelledError as e:
-        logger.error(f"asyncio ERROR {xml_path}", exc_info=e)
-        pass
     except Exception as e:
         logger.error(f"XML UNKNOWN error {xml_path}: {e}", exc_info=e)
 
@@ -99,27 +96,9 @@ async def convert_to_pdf(
         async with aiofiles.open(xml) as f:
             data = await f.read()
 
-        from tenacity import (
-            AsyncRetrying,
-            before_sleep_log,
-            retry_if_exception_type,
-            stop_after_attempt,
-            wait_exponential,
-        )
-
         response: Response | None = None
         try:
-            async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(settings.retry.count),
-                wait=wait_exponential(
-                    multiplier=settings.retry.backoff_factor,
-                    min=settings.retry.delay,
-                    max=settings.retry.max_delay,
-                ),
-                retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
-                before_sleep=before_sleep_log(logger, logging.WARNING),
-                reraise=True,
-            ):
+            async for attempt in anaf_retrying(settings.retry, logger):
                 with attempt:
                     response = await client.post(url=url, headers=headers, data=data, timeout=30.0)
                     response.raise_for_status()
@@ -280,7 +259,7 @@ def process_invoices():
 
     files_to_process: dict[Path, Path] = {}
     for xml_file in download_dir.glob("*.xml"):
-        pdf_file: Path = asyncio.run(get_pdf_path(xml_file))
+        pdf_file: Path = get_pdf_path(xml_file)
         if not pdf_file.exists():
             files_to_process[xml_file] = pdf_file
 

@@ -42,7 +42,7 @@ class PostalAddress(BaseXmlModel, tag="PostalAddress", search_mode="unordered", 
         county = self.country_subentity or ""
 
         return {
-            "fomatted": f"Adresa: {address}  {city}\nJudet: {county}",
+            "formatted": f"Adresa: {address}  {city}\nJudet: {county}",
             "address": address,
             "city": city,
             "county": county,

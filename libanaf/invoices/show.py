@@ -20,11 +20,11 @@ from rich.text import Text
 from rich.align import Align
 
 from libanaf.config import get_settings
+from libanaf.invoices.common import DateValidationError, ensure_date_range, format_money, format_percent
 from libanaf.invoices.query import collect_documents
 from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
-from libanaf.invoices.common import DateValidationError, ensure_date_range
 
 logger = logging.getLogger(__name__)
 console = Console()
@@ -235,24 +235,10 @@ def display_header(doc: Invoice | CreditNote) -> None:
 # ------------------------------
 
 
-def _format_money(value: float | None, currency: str | None) -> str:
-    """Format money using English number formatting (1,234.56)."""
-    if value is None:
-        return ""
-    cur = currency or "RON"
-    return f"{value:,.2f} {cur}"
-
-
 def _format_qty(value: float | int | None) -> str:
     if value is None:
         return ""
     return f"{float(value):,.2f}"
-
-
-def _format_percent(value: float | None) -> str:
-    if value is None:
-        return "0%"
-    return f"{value:.0f}%"
 
 
 class InvoiceRenderer:
@@ -422,10 +408,10 @@ class InvoiceRenderer:
                 name,
                 str(unit_code),
                 _format_qty(qty),
-                _format_money(unit_price, currency),
-                _format_money(base_value, currency),
-                _format_money(discount_value if discount_value != 0 else 0.0, currency),
-                _format_money(vat_value, currency),
+                format_money(unit_price, currency),
+                format_money(base_value, currency),
+                format_money(discount_value if discount_value != 0 else 0.0, currency),
+                format_money(vat_value, currency),
             )
 
         return table
@@ -470,16 +456,16 @@ class InvoiceRenderer:
             total_base += base
             total_vat += vat
             t.add_row(
-                _format_percent(p),
-                _format_money(base, currency),
-                _format_money(vat, currency),
+                format_percent(p),
+                format_money(base, currency),
+                format_money(vat, currency),
             )
 
         t.add_row("", "", "")
         t.add_row(
             "Total",
-            _format_money(total_base, currency),
-            _format_money(total_vat, currency),
+            format_money(total_base, currency),
+            format_money(total_vat, currency),
         )
         return Panel(t, title="Rezumat TVA", padding=(0, 1))
 
@@ -541,10 +527,10 @@ class InvoiceRenderer:
             if label == "Total de plata":
                 t.add_row(
                     Text(label, style="bold white on dark_green"),
-                    Text(_format_money(value, cur), style="bold"),
+                    Text(format_money(value, cur), style="bold"),
                 )
             else:
-                t.add_row(label, _format_money(value, cur))
+                t.add_row(label, format_money(value, cur))
 
         return Panel(t, title="Totaluri", padding=(0, 1))
 

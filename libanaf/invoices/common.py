@@ -59,3 +59,32 @@ def format_currency(value: Decimal | float | int, currency: str) -> str:
     """Format numeric values with a currency suffix."""
 
     return f"{value:,.2f}"  # {currency}"
+
+
+def format_money(value: float | None, currency: str | None = None) -> str:
+    """Format a monetary value with a currency suffix (e.g. ``1,234.56 RON``).
+
+    Args:
+        value: The numeric amount to format, or ``None`` for an empty string.
+        currency: ISO 4217 currency code. Defaults to ``"RON"``.
+
+    Returns:
+        str: Formatted amount with currency, e.g. ``"1,234.56 RON"``.
+    """
+    if value is None:
+        return ""
+    return f"{value:,.2f} {currency or 'RON'}"
+
+
+def format_percent(value: float | None) -> str:
+    """Format a percentage value (e.g. ``19%``).
+
+    Args:
+        value: The percentage as a plain float (19.0 for 19%), or ``None``.
+
+    Returns:
+        str: Formatted percentage string, e.g. ``"19%"``. Returns ``"0%"`` for ``None``.
+    """
+    if value is None:
+        return "0%"
+    return f"{value:.0f}%"

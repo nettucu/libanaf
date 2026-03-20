@@ -21,7 +21,7 @@ from rich.console import Console
 from rich.table import Table
 
 from libanaf.config import Settings, get_settings
-from libanaf.types import UNIT_CODES
+from libanaf.ubl.units import UNIT_CODES
 from libanaf.ubl.cac import CreditNoteLine, InvoiceLine
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice

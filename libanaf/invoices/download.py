@@ -18,8 +18,25 @@ from rich.progress import (
 from libanaf.types import Filter
 from libanaf.auth import AnafAuthClient
 from libanaf.config import get_settings
-from libanaf.invoices._utils import is_invoice_downloaded
+from libanaf.invoices._retry import anaf_retrying
 from libanaf.invoices.list import fetch_invoice_list
+
+
+def is_invoice_downloaded(message: dict[str, str], download_dir: Path) -> bool:
+    """Check whether an invoice archive is already present on disk.
+
+    Args:
+        message: Raw message dict from the ANAF API (must contain ``"id"`` and
+            ``"id_solicitare"`` keys).
+        download_dir: Directory to check for existing ZIP files.
+
+    Returns:
+        bool: ``True`` if any of the expected archive filenames already exist.
+    """
+    invoice_id: str = message["id"]
+    id_solicitare: str = message["id_solicitare"]
+    possible_filenames = [f"{invoice_id}.zip", f"{id_solicitare}.zip", f"efactura_{id_solicitare}.zip"]
+    return any((download_dir / filename).exists() for filename in possible_filenames)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -59,27 +76,9 @@ async def download_invoice(
         url: str = f"{url_base}?id={invoice_id}"
         logger.debug(f"Downloading from: {url}")
 
-        from tenacity import (
-            AsyncRetrying,
-            before_sleep_log,
-            retry_if_exception_type,
-            stop_after_attempt,
-            wait_exponential,
-        )
-
         response: Response | None = None
         try:
-            async for attempt in AsyncRetrying(
-                stop=stop_after_attempt(settings.retry.count),
-                wait=wait_exponential(
-                    multiplier=settings.retry.backoff_factor,
-                    min=settings.retry.delay,
-                    max=settings.retry.max_delay,
-                ),
-                retry=retry_if_exception_type((httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)),
-                before_sleep=before_sleep_log(logger, logging.WARNING),
-                reraise=True,
-            ):
+            async for attempt in anaf_retrying(settings.retry, logger):
                 with attempt:
                     response = await client.get(url)
                     response.raise_for_status()
