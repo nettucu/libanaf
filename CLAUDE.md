@@ -31,14 +31,14 @@ uv sync
 - `libanaf/config.py` — `Settings(BaseSettings)` with nested sections (`auth`, `connection`, `efactura`, `storage`, `retry`, `log`). Env prefix `LIBANAF_`, nested delimiter `__` (e.g. `LIBANAF_AUTH__CLIENT_ID`). `get_settings()` is `@lru_cache`; env file path from `LIBANAF_ENV_FILE` env var (default: `secrets/.env`). `save_tokens()` writes tokens back via python-dotenv `set_key`.
 - `libanaf/exceptions.py` — `AnafException` → `AnafRequestError`, `AuthorizationError`.
 - `libanaf/auth/` — `client.py` (`AnafAuthClient`, OAuth2 flow via Authlib), `server.py` (`OAuthCallbackServer`, Flask-based local redirect server). No typer imports.
-- `libanaf/cli/` — `app.py` (root Typer app, `@app.callback()` guards `get_settings()` with `ctx.resilient_parsing`), `auth.py` (auth command with retry loop using `typer.confirm`, `show-token` command).
-- `libanaf/invoices/` — `app.py` (sub-Typer with commands: `list`, `show`, `summary`, `prod-summary`, `download`, `process`, `render-pdf`), `query.py` (`collect_documents()` uses `ThreadPoolExecutor` to parse XML files in parallel), others implement each operation.
+- `libanaf/cli/` — `app.py` (root Typer app, `@app.callback()` guards `get_settings()` with `ctx.resilient_parsing`), `auth.py` (auth command with retry loop using `typer.confirm`, `show-token` command), `invoices/` (Typer sub-app; commands: `list`, `show`, `summary`, `prod-summary`, `download`, `process`, `render-pdf`).
+- `libanaf/invoices/` — pure library package (no CLI code); `list.py` (`fetch_invoice_list()` async), `download.py`, `process.py`, `query.py` (`collect_documents()` parses XML in parallel via `ThreadPoolExecutor`, 8 threads), `summary.py` (`SummaryRow`, `build_summary_rows`, `summarize_invoices`), `product_summary.py` (`ProductSummaryRow`, `build_product_summary_rows`, `summarize_products`). Public API exposed via `__all__`.
 - `libanaf/ubl/` — `ubl_document.py` (`UBLDocument` base pydantic-xml model, `parse_ubl_document()` dispatches to `Invoice` or `CreditNote` based on XML root tag), `invoice.py`, `credit_note.py`, `cac.py` (UBL CAC namespace elements), `ubl_types.py` (namespace map).
 - `libanaf/types.py` — shared types including `Filter` enum for ANAF message filtering.
 
 ### Key Data Flows
 
-**Invoice download**: `invoices download` → `download()` calls `list_invoices()` to get message IDs → fetches ZIPs from ANAF API → stores in `settings.storage.download_dir` (default: `dlds/`).
+**Invoice download**: `invoices download` → `download()` calls `fetch_invoice_list()` to get message IDs → fetches ZIPs from ANAF API → stores in `settings.storage.download_dir` (default: `dlds/`).
 
 **Invoice processing**: `invoices process` → `process_invoices()` unzips downloads, extracts XML, calls ANAF xml2pdf API to convert to PDF.
 

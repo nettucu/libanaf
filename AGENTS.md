@@ -56,7 +56,7 @@ Agents should use the following **primary context files** before making changes:
 All code changes must:
 
 - Pass `ruff check .`
-- Pass all tests (`uv run --with pytest pytest -q`)
+- Pass all tests (`uv run python -m pytest tests/`)
 - Achieve ≥85% coverage in touched modules
 - **ALWAYS** Create Google or NumPy style docstrings describing the function and it's arguments
 - Include type hints for all function arguments and returns and for variables where it would add clarity to the code
@@ -72,7 +72,7 @@ All code changes must:
 
 ### Allowed Actions
 
-- **Read/modify code** in `libanaf/`, `tests/`, `ai/briefs/`
+- **Read/modify code** in `libanaf/`, `libanaf/cli/`, `libanaf/cli/invoices/`, `tests/`, `ai/briefs/`
 - **Add tests** and fixtures in `tests/`
 - **Update docs** in `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`
 - **Run local tools**: `ruff`, `pytest`, `coverage`, `uv`, `make`

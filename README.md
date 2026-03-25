@@ -4,22 +4,24 @@
 
 It handles:
 
-- OAuth2 authentication and token management, this requires Windows because ANAF tokens are handled by applications on windows
+- OAuth2 authentication and token management (browser-based, cross-platform)
 - Invoices (UBL 2.1 + RO-CIUS) download, in the future it could also validate and upload invoices
 - Invoices processing, which takes the downloaded XML and using ANAF services converts it to PDF
 - Message status polling
 - Secure local configuration management
 
+See also: [Architecture](ARCHITECTURE.md) · [Domain Glossary](CONTEXT.md) · [AI Agent Guide](AGENTS.md)
+
 ---
 
 ## Features
 
-- **Python API** and **CLI** (via Typer)
-- **Asynchronous HTTP** calls (httpx)
-- **Retry and error handling** for ANAF endpoints
-- **Configurable token storage** (filesystem or OS keyring)
-- **Schema validation** for UBL 2.1 invoices
-- **Invoice product summary** command with Rich output and precise discount allocation
+- **Python library API** (`import libanaf`) and **CLI** (`libanaf invoices ...`) via Typer
+- **Asynchronous HTTP** calls (httpx) with automatic retry and exponential backoff
+- **Token storage** via pydantic-settings and `.env` files (`secrets/.env`)
+- **UBL 2.1 + RO-CIUS** invoice and credit note parsing (pydantic-xml)
+- **Invoice summary** and **product-level summary** with precise discount allocation
+- **Local PDF rendering** from UBL XML without an ANAF API call
 
 ---
 
@@ -28,9 +30,14 @@ It handles:
 ### Install
 
 ```bash
-uv pip install libanaf
-# or
+# Library only (no CLI entry point)
 pip install libanaf
+
+# Library + CLI (installs `libanaf` command)
+pip install libanaf[cli]
+
+# Development
+uv sync
 ```
 
 ### Invoice product summary

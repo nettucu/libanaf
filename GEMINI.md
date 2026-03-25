@@ -23,15 +23,17 @@ This document provides essential context for AI models interacting with this pro
 
 ## 3. Architectural Patterns
 
-* **Overall Architecture:** The project is a modular Python application with a clear separation of concerns. It exposes its functionality as both a library and a CLI. The architecture is designed around distinct modules for authentication (`auth.py`), API communication (`comms.py`), configuration (`config.py`), and domain-specific logic for invoices (`invoices/`) and UBL standards (`ubl/`).
+* **Overall Architecture:** The project is a modular Python application with a clear separation of concerns. It exposes its functionality as both a library and a CLI. The architecture is designed around distinct packages for authentication (`auth/`), configuration (`config.py`), CLI commands (`cli/`), and domain-specific logic for invoices (`invoices/`) and UBL standards (`ubl/`).
 * **Directory Structure Philosophy:**
     *   `/libanaf`: Contains all primary source code for the library and CLI.
-    *   `/libanaf/invoices`: Holds the logic specific to invoice management (downloading, processing, summarizing).
-    *   `/libanaf/ubl`: Contains code for UBL XML serialization, deserialization, and validation.
-    *   `/tests`: Contains all unit and integration tests, with fixtures located in `/tests/fixtures`.
-    *   `/conf`: Intended for application configuration files (e.g., `config.toml`).
-    *   `/ai/briefs`: Stores detailed specifications for tasks to be handled by AI agents.
-    *   `/docs`: Contains project documentation, specifications, and sample files.
+    *   `/libanaf/auth`: OAuth2 flow (`AnafAuthClient`) and local TLS callback server (`OAuthCallbackServer`).
+    *   `/libanaf/cli`: Typer CLI entry point (`app.py`) and sub-commands (`auth.py`, `invoices/`).
+    *   `/libanaf/cli/invoices`: Typer commands for invoice management (`list`, `show`, `summary`, `prod-summary`, `download`, `process`, `render-pdf`).
+    *   `/libanaf/invoices`: Pure library package — fetch, download, process, query, and summarize invoices. No CLI dependencies.
+    *   `/libanaf/ubl`: UBL XML deserialization and validation via pydantic-xml.
+    *   `/tests`: Unit and integration tests, with fixtures in `/tests/fixtures`.
+    *   `/ai/briefs`: Task specifications for AI agents.
+    *   `/docs`: Project documentation and sample files.
 
 ## 4. Coding Conventions & Style Guide
 
@@ -45,8 +47,8 @@ This document provides essential context for AI models interacting with this pro
 
 ## 5. Key Files & Entrypoints
 
-* **Main Entrypoint(s):** The primary entrypoint for the CLI application is the `app` object in `libanaf/cli.py`, which is exposed as a script via `pyproject.toml` (`libanaf.cli:app`).
-* **Configuration:** Configuration is loaded from `conf/config.toml` or `.env` files. The `libanaf/config.py` module manages access to configuration.
+* **Main Entrypoint(s):** The primary entrypoint for the CLI application is the `app` object in `libanaf/cli/app.py`, which is exposed as a script via `pyproject.toml` (`libanaf.cli:app`).
+* **Configuration:** Configuration is loaded from a `.env` file (default: `secrets/.env`, overridden by `LIBANAF_ENV_FILE` env var) via `pydantic-settings` with env prefix `LIBANAF_` and nested delimiter `__` (e.g. `LIBANAF_AUTH__CLIENT_ID`). The `libanaf/config.py` module manages access via the cached `get_settings()` function.
 * **CI/CD Pipeline:** No CI/CD pipeline configuration file (e.g., `.github/workflows/`) was detected in the project structure.
 
 ## 6. Development & Testing Workflow

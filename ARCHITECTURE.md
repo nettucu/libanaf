@@ -1,97 +1,169 @@
----
-
-## `ARCHITECTURE.md` skeleton
-
-```markdown
 # libanaf Architecture
 
 ## 1. Overview
-libanaf is structured as a modular Python package with a Typer-based CLI.
-It provides a consistent interface for ANAF e-Factura operations:
-- Authentication
-- Communication (HTTP requests)
-- Invoice (UBL) handling
-- CLI commands
+
+libanaf is a modular Python package (≥3.11) that exposes both a **library API** and a **Typer CLI** for interacting with the Romanian ANAF e-Factura system. The library layer (`libanaf/`) has no CLI dependencies; the CLI layer (`libanaf/cli/`) imports from the library and adds Typer commands, Rich output, and user-facing error handling.
 
 ---
 
 ## 2. Module Map
 
+```
 libanaf/
+├── __init__.py              # Public API — re-exports from all sub-packages via __all__
+├── config.py                # Settings(BaseSettings) — env prefix LIBANAF_, nested delimiter __
+├── exceptions.py            # AnafException → AnafRequestError, AuthorizationError
+├── types.py                 # Shared types: Filter enum (E/T/P/R)
 │
-├── auth.py # OAuth2 flow, token management, refresh
-├── comms.py # HTTP client (httpx), retries, error handling
-├── config.py # Config loading, token store abstraction
-├── cli.py # Typer CLI entrypoints
-├── types.py # TypedDict / Pydantic models
-├── utils.py # Helpers (logging, env, parsing)
+├── auth/
+│   ├── __init__.py          # Re-exports: AnafAuthClient, OAuthCallbackServer
+│   ├── client.py            # AnafAuthClient — OAuth2 Authorization Code flow via Authlib
+│   └── server.py            # OAuthCallbackServer — Flask + TLS local redirect server
 │
-├── invoices/ # Invoice-specific logic
-├── ubl/ # UBL XML serialization/validation
+├── cli/
+│   ├── app.py               # Root Typer app; @app.callback() guards get_settings()
+│   ├── auth.py              # `auth` command (retry loop + typer.confirm), `show-token`
+│   └── invoices/
+│       ├── __init__.py      # Typer sub-app: registers list/show/summary/prod-summary/download/process/render-pdf
+│       ├── list.py          # `invoices list` — fetches and displays message list in a Rich table
+│       ├── show.py          # `invoices show` — displays matching invoices
+│       ├── summary.py       # `invoices summary` — tabular invoice summary
+│       ├── product_summary.py  # `invoices prod-summary` — product-level summary
+│       ├── download.py      # `invoices download` — download ZIPs from ANAF
+│       ├── process.py       # `invoices process` — unzip + ANAF xml2pdf conversion
+│       └── pdf_render.py    # `invoices render-pdf` — local PDF rendering via ReportLab
 │
-└── tests/ # Unit/integration tests + fixtures
+├── invoices/
+│   ├── __init__.py          # Public API via __all__
+│   ├── list.py              # fetch_invoice_list() — async, queries listaMesajeFactura endpoint
+│   ├── download.py          # download() — fetches ZIPs, skips already-downloaded IDs
+│   ├── process.py           # process_invoices() — unzip, extract XML, call ANAF xml2pdf API
+│   ├── query.py             # collect_documents() — parallel XML parsing (ThreadPoolExecutor, 8 threads)
+│   ├── summary.py           # SummaryRow, build_summary_rows(), summarize_invoices()
+│   ├── product_summary.py   # ProductSummaryRow, build_product_summary_rows(), summarize_products()
+│   ├── common.py            # Shared helpers: ensure_date_range(), DateValidationError
+│   └── _retry.py            # anaf_retrying() — tenacity retry decorator for ANAF calls
+│
+└── ubl/
+    ├── __init__.py          # Public API via __all__
+    ├── ubl_document.py      # UBLDocument (pydantic-xml base), parse_ubl_document() dispatcher
+    ├── invoice.py           # Invoice model
+    ├── credit_note.py       # CreditNote model
+    ├── cac.py               # UBL CAC namespace elements
+    └── ubl_types.py         # Namespace map
+```
 
 ---
 
-## 3. Data Flow
+## 3. Key Data Flows
 
-### **Example: Invoice Upload**
+### Auth flow
+```
+libanaf auth
+  → AnafAuthClient.get_access_token()
+  → OAuthCallbackServer (Flask + TLS on localhost:8000)
+  → browser opens ANAF OAuth URL
+  → callback receives code → exchanges for tokens
+  → save_tokens() writes to secrets/.env via python-dotenv
+  → get_settings() cache cleared
+```
 
-1. CLI calls `invoice upload` command in `cli.py`
-2. Loads config + token from `config.py` / `auth.py`
-3. Serializes and validates invoice via `ubl/`
-4. Sends request to ANAF API using `comms.py`
-5. Parses response into typed model in `types.py`
-6. CLI prints message ID / status
+### Invoice download
+```
+libanaf invoices download
+  → fetch_invoice_list() [async, ANAF listaMesajeFactura]
+  → compares message IDs against already-downloaded files in dlds/
+  → downloads missing ZIPs from ANAF descarcare endpoint
+  → stores as {id}.zip in settings.storage.download_dir (default: dlds/)
+```
+
+### Invoice processing
+```
+libanaf invoices process
+  → scans dlds/ for *.zip files not yet unzipped
+  → extracts XML from each ZIP
+  → calls ANAF xml2pdf endpoint → saves PDF alongside XML
+```
+
+### Local querying (show / summary / prod-summary / render-pdf)
+```
+collect_documents(dlds/)
+  → globs *.xml
+  → parse_ubl_document() in parallel (8 threads)
+  → filters: invoice_number, supplier_name, date range
+  → returns list[Invoice | CreditNote]
+```
 
 ---
 
-## 4. Authentication
+## 4. Configuration
 
-- **OAuth2 Authorization Code Flow** (local redirect)
-- Refresh token logic (TODO: implement & test)
-- Token storage backends:
-  - Filesystem (encrypted)
-  - OS keyring
+Settings are loaded via `pydantic-settings` with env prefix `LIBANAF_` and nested delimiter `__`:
+
+| Section | Key example | Env var |
+|---|---|---|
+| `auth` | `client_id` | `LIBANAF_AUTH__CLIENT_ID` |
+| `connection` | `access_token` | `LIBANAF_CONNECTION__ACCESS_TOKEN` |
+| `efactura` | `message_list_url` | `LIBANAF_EFACTURA__MESSAGE_LIST_URL` |
+| `storage` | `download_dir` | `LIBANAF_STORAGE__DOWNLOAD_DIR` |
+| `retry` | `count` | `LIBANAF_RETRY__COUNT` |
+| `log` | `file` | `LIBANAF_LOG__FILE` |
+
+The env file path defaults to `secrets/.env` and is overridden by `LIBANAF_ENV_FILE`.
+`get_settings()` is `@lru_cache` — call `get_settings.cache_clear()` after writing new tokens.
 
 ---
 
 ## 5. External Dependencies
 
-- `httpx` — async HTTP client
-- `authlib` — OAuth2 flows
-- `pydantic` / `pydantic-xml` — typed models and XML parsing
-- `lxml` — UBL schema validation
-- `typer` - CLI manager
+| Library | Purpose |
+|---|---|
+| `httpx` | Async HTTP client |
+| `authlib` | OAuth2 Authorization Code flow |
+| `pydantic-settings` | Typed configuration from env vars |
+| `pydantic-xml` | UBL XML deserialization |
+| `lxml` | XML schema validation |
+| `tenacity` | Retry with exponential backoff |
+| `flask` | Local HTTPS callback server for OAuth |
+| `cryptography` / `pyOpenSSL` | Self-signed TLS cert for OAuth callback |
+| `reportlab` | Local PDF rendering from UBL XML |
+| `typer` | CLI framework *(optional — `libanaf[cli]`)* |
+| `rich` | Terminal tables and formatting *(optional — `libanaf[cli]`)* |
 
 ---
 
-## 6. Configuration
+## 6. Error Handling
 
-- `.env` or `conf/config.toml` for endpoints and client credentials
-- `.env.example` with placeholders
-- AI agents: refer to `CONTEXT.md` for domain glossary
-
----
-
-## 7. Error Handling
-
-- Custom exceptions (`AnafAuthError`, `AnafRequestError`, `AnafRateLimitError`)
-- Retry policy (exponential backoff) for 5xx and certain 4xx responses
-- Validation errors surfaced with schema details
+- `AnafException` — base
+  - `AnafRequestError` — HTTP or API-level errors (ANAF returned `"eroare"`)
+  - `AuthorizationError` — OAuth flow failures
+- Retry policy: `anaf_retrying()` (tenacity) — exponential backoff on transient errors; configured via `settings.retry.*`
+- CLI layer catches library exceptions and prints user-friendly messages via Rich before exiting with non-zero code
 
 ---
 
-## 8. CLI Commands
+## 7. CLI Commands
 
-- `auth` → login, refresh, status
-- `invoice` → validate, upload, status, download
-- `inbox` → list, pull
+```
+libanaf
+├── auth          — start OAuth2 flow, with retry loop
+├── show-token    — decode and display JWT claims from stored access token
+└── invoices
+    ├── list          — list available messages from ANAF (last N days)
+    ├── show          — display matching locally-stored invoices
+    ├── summary       — tabular summary (supplier, date, totals)
+    ├── prod-summary  — product-level summary with discount allocation
+    ├── download      — download new ZIPs from ANAF
+    ├── process       — unzip + convert XML→PDF via ANAF api
+    └── render-pdf    — generate PDF locally from UBL XML (no ANAF call)
+```
 
 ---
 
-## 9. Future Enhancements
+## 8. Invariants
 
-- Complete token refresh + expiry handling
-- Async batch upload
-- Full RO-CIUS schema compliance checks
+- `get_settings()` must never be called during `ctx.resilient_parsing` (tab-completion / help generation).
+- All invoice library modules call `get_settings()`, never `get_config()`.
+- UBL discount math: `LineExtensionAmount` is gross; `AllowanceCharge.Amount` is negative for discounts; taxable = gross − |discount|; VAT is calculated on the taxable amount.
+- ANAF message retention window: 60 days.
+- `libanaf/invoices/` has no dependency on `typer` or `rich` — display logic lives exclusively in `libanaf/cli/invoices/`.
