@@ -8,6 +8,7 @@ import pytest
 from rich.console import Console
 
 from libanaf.config import Settings
+from libanaf.cli.invoices.product_summary import render_product_summary
 from libanaf.invoices.product_summary import (
     build_product_summary_rows,
     collect_documents,
@@ -81,14 +82,14 @@ def test_build_rows_handles_credit_note() -> None:
 
 def test_summarize_products_renders_table(dummy_settings: Settings) -> None:
     console = Console(record=True, width=320)
-    summarize_products(
+    rows = summarize_products(
         invoice_number="FIMCGB8202",
         supplier_name=None,
         start_date=datetime(2025, 2, 1),
         end_date=datetime(2025, 2, 6),
         settings=dummy_settings,
-        output=console,
     )
+    render_product_summary(rows, output=console)
 
     text_output = console.export_text(clear=False)
     assert "Invoice Product Summary" in text_output

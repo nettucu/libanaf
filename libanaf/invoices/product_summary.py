@@ -1,14 +1,13 @@
 """Produce a product-level summary for invoices and credit notes.
 
 The feature aggregates every invoice line (or credit note line) that matches
-the supplied filters, allocates document-level discounts across lines, and
-renders the results in a Rich table ready for CLI output.
+the supplied filters and allocates document-level discounts across lines.
+Display/rendering is handled by the CLI layer.
 """
 
 from __future__ import annotations
 
 import logging
-import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -16,27 +15,20 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum, auto
 from pathlib import Path
 
-import typer
-from rich.console import Console
-from rich.table import Table
-
 from libanaf.config import Settings, get_settings
 from libanaf.ubl.units import UNIT_CODES
 from libanaf.ubl.cac import CreditNoteLine, InvoiceLine
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
 from libanaf.invoices.common import (
-    DateValidationError,
     ensure_date_range,
     extract_supplier_name,
-    format_currency,
 )
 from libanaf.invoices.query import collect_documents
 
 logger = logging.getLogger(__name__)
 
 CURRENCY_QUANT = Decimal("0.01")
-DEFAULT_CONSOLE = Console()
 
 
 class _LineBaseType(Enum):
@@ -76,27 +68,25 @@ def summarize_products(
     supplier_name: str | None,
     start_date: date | datetime | None,
     end_date: date | datetime | None,
-    render_output: bool = True,
     *,
     settings: Settings | None = None,
-    output: Console | None = None,
-) -> list[ProductSummaryRow] | None:
-    """Render a Rich table with product-level figures for matching documents."""
+) -> list[ProductSummaryRow]:
+    """Collect and aggregate product-level figures for matching invoice documents.
 
-    product_console = output or DEFAULT_CONSOLE
+    Args:
+        invoice_number: Partial or full invoice number to filter by.
+        supplier_name: Partial or full supplier name to filter by.
+        start_date: Inclusive start date when combined with ``end_date``.
+        end_date: Inclusive end date when combined with ``start_date``.
+        settings: Optional settings override; uses cached settings if not provided.
 
-    try:
-        start, end = ensure_date_range(start_date, end_date)
-    except DateValidationError as exc:
-        if exc.code == "both_required":
-            product_console.print(
-                "❌ [bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
-            )
-        elif exc.code == "start_after_end":
-            product_console.print("❌ [bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
-        else:  # pragma: no cover - defensive branch
-            product_console.print("❌ [bold red]Error: invalid date range.[/bold red]")
-        raise typer.Exit(code=1)
+    Returns:
+        list[ProductSummaryRow]: Aggregated product rows (may be empty).
+
+    Raises:
+        DateValidationError: If only one of start/end date is provided, or start > end.
+    """
+    start, end = ensure_date_range(start_date, end_date)
 
     app_settings = settings or get_settings()
     dlds_dir = app_settings.storage.download_dir
@@ -115,17 +105,8 @@ def summarize_products(
         allow_unfiltered=True,
     )
 
-    if not documents:
-        product_console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
-        return None
-
     logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
-
-    rows = build_product_summary_rows(documents)
-    if render_output:
-        render_product_summary(rows, console=product_console)
-
-    return rows
+    return build_product_summary_rows(documents)
 
 
 def build_product_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[ProductSummaryRow]:
@@ -136,56 +117,6 @@ def build_product_summary_rows(documents: Sequence[Invoice | CreditNote]) -> lis
         rows.extend(_build_rows_for_document(document))
 
     return rows
-
-
-def render_product_summary(rows: Iterable[ProductSummaryRow], *, console: Console | None = None) -> None:
-    """Render the product summary rows using Rich."""
-
-    target_console = console or DEFAULT_CONSOLE
-
-    table = Table(
-        show_header=True,
-        header_style="bold white on navy_blue",
-        title="Invoice Product Summary",
-    )
-    table.add_column("Supplier", style="green")
-    table.add_column("Invoice Number", style="cyan")
-    table.add_column("Date", justify="center")
-    table.add_column("Total (Invoice)", justify="right", style="blue")
-    table.add_column("Total Value (Payable)", justify="right", style="green")
-    table.add_column("Product", style="white")
-    table.add_column("Product Code", style="white")
-    table.add_column("Quantity", justify="right", style="yellow")
-    table.add_column("U.M.", style="yellow")
-    table.add_column("Price", justify="right", style="white")
-    table.add_column("Value", justify="right", style="white")
-    table.add_column("VAT Rate", justify="right", style="white")
-    table.add_column("VAT Value", justify="right", style="white")
-    table.add_column("Discount Rate", justify="right", style="white")
-    table.add_column("Discount Value", justify="right", style="white")
-    table.add_column("Total Per Line", justify="right", style="magenta")
-
-    for row in rows:
-        table.add_row(
-            row.supplier,
-            row.document_number,
-            row.invoice_date.isoformat(),
-            format_currency(row.total_invoice, row.currency),
-            format_currency(row.total_payable, row.currency),
-            row.product,
-            row.product_code or "-",
-            _format_quantity(row.quantity),
-            _format_unit(row.unit_of_measure),
-            _format_price(row.unit_price, row.currency),
-            format_currency(row.value, row.currency),
-            f"{row.vat_rate:.2f}",
-            format_currency(row.vat_value, row.currency),
-            f"{abs(row.discount_rate):.2f}%",
-            format_currency(abs(row.discount_value), row.currency),
-            format_currency(row.total_per_line, row.currency),
-        )
-
-    target_console.print(table)
 
 
 def _build_rows_for_document(document: Invoice | CreditNote) -> list[ProductSummaryRow]:

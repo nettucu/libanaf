@@ -400,12 +400,14 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "reportlab" },
     { name = "requests" },
-    { name = "rich" },
     { name = "tenacity" },
-    { name = "typer" },
 ]
 
 [package.optional-dependencies]
+cli = [
+    { name = "rich" },
+    { name = "typer" },
+]
 dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -434,11 +436,11 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "reportlab", specifier = ">=4.0.0" },
     { name = "requests", specifier = ">=2.31.0" },
-    { name = "rich", specifier = ">=13.7.1" },
+    { name = "rich", marker = "extra == 'cli'", specifier = ">=13.7.1" },
     { name = "tenacity", specifier = ">=9.1.2" },
-    { name = "typer", specifier = ">=0.16.0" },
+    { name = "typer", marker = "extra == 'cli'", specifier = ">=0.16.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["cli", "dev"]
 
 [package.metadata.requires-dev]
 dev = [

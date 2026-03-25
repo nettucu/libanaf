@@ -1,7 +1,7 @@
 """Summarize locally stored invoices and credit notes.
 
-Provides a console-friendly table with the main financial figures for the
-documents that match a set of wildcard filters.
+Provides a data pipeline to collect and aggregate invoice documents
+into structured summary rows. Display/rendering is handled by the CLI layer.
 """
 
 from __future__ import annotations
@@ -10,25 +10,18 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from collections.abc import Iterable, Sequence
-
-import typer
-from rich.console import Console
-from rich.table import Table
+from collections.abc import Sequence
 
 from libanaf.config import Settings, get_settings
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
 from libanaf.invoices.common import (
-    DateValidationError,
     ensure_date_range,
     extract_supplier_name,
-    format_currency,
 )
 from libanaf.invoices.query import collect_documents
 
 logger = logging.getLogger(__name__)
-DEFAULT_CONSOLE = Console()
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,30 +44,23 @@ def summarize_invoices(
     end_date: date | datetime | None,
     *,
     settings: Settings | None = None,
-    output: Console | None = None,
-) -> None:
-    """Render a Rich table summarising matching invoices/credit notes."""
+) -> list[SummaryRow]:
+    """Collect and summarize matching invoices/credit notes from local storage.
 
-    summary_console = output or DEFAULT_CONSOLE
+    Args:
+        invoice_number: Partial or full invoice number to filter by.
+        supplier_name: Partial or full supplier name to filter by.
+        start_date: Inclusive start date when combined with ``end_date``.
+        end_date: Inclusive end date when combined with ``start_date``.
+        settings: Optional settings override; uses cached settings if not provided.
 
-    if not any([invoice_number, supplier_name]):
-        summary_console.print(
-            "❌ [bold red]Error: provide at least one filter such as --invoice-number or --supplier-name.[/bold red]"
-        )
-        raise typer.Exit(code=1)
+    Returns:
+        list[SummaryRow]: Sorted summary rows for matching documents (may be empty).
 
-    try:
-        start, end = ensure_date_range(start_date, end_date)
-    except DateValidationError as exc:
-        if exc.code == "both_required":
-            summary_console.print(
-                "[bold red]Error: both --start-date and --end-date must be supplied together.[/bold red]"
-            )
-        elif exc.code == "start_after_end":
-            summary_console.print("[bold red]Error: --start-date must be before or equal to --end-date.[/bold red]")
-        else:  # pragma: no cover - defensive branch
-            summary_console.print("[bold red]Error: invalid date range.[/bold red]")
-        raise typer.Exit(code=1)
+    Raises:
+        DateValidationError: If only one of start/end date is provided, or start > end.
+    """
+    start, end = ensure_date_range(start_date, end_date)
 
     app_settings = settings or get_settings()
     dlds_dir = app_settings.storage.download_dir
@@ -97,17 +83,18 @@ def summarize_invoices(
         end_date=end,
     )
 
-    if not documents:
-        summary_console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
-        return
-
-    rows = build_summary_rows(documents)
-    render_summary(rows, console=summary_console)
+    return build_summary_rows(documents)
 
 
 def build_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[SummaryRow]:
-    """Transform parsed documents into sorted summary rows."""
+    """Transform parsed documents into sorted summary rows.
 
+    Args:
+        documents: Parsed invoice/credit note documents.
+
+    Returns:
+        list[SummaryRow]: Rows sorted by invoice date then document number.
+    """
     rows: list[SummaryRow] = []
     for document in documents:
         supplier_name = extract_supplier_name(document.accounting_supplier_party.party)
@@ -128,31 +115,3 @@ def build_summary_rows(documents: Sequence[Invoice | CreditNote]) -> list[Summar
 
     rows.sort(key=lambda r: (r.invoice_date, r.document_number))
     return rows
-
-
-def render_summary(rows: Iterable[SummaryRow], *, console: Console | None = None) -> None:
-    """Render the summary table to the supplied console."""
-
-    target_console = console or DEFAULT_CONSOLE
-
-    table = Table(
-        show_header=True,
-        header_style="bold white on navy_blue",
-        title="Invoices Summary",
-    )
-    table.add_column("Invoices Number", style="cyan", no_wrap=True)
-    table.add_column("Supplier", style="green")
-    table.add_column("Invoice Date", style="white")
-    table.add_column("Due Date", style="white")
-    table.add_column("Total Value (Payable)", justify="right", style="magenta")
-
-    for row in rows:
-        table.add_row(
-            row.document_number,
-            row.supplier,
-            row.invoice_date.isoformat(),
-            row.due_date.isoformat() if row.due_date else "N/A",
-            format_currency(row.payable_amount, row.currency),
-        )
-
-    target_console.print(table)

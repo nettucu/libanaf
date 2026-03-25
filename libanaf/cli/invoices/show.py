@@ -1,28 +1,23 @@
-"""Render and filter local UBL invoices/credit notes.
-
-Provides helpers to list and display UBL `Invoice`/`CreditNote` documents
-stored on disk, filter them by supplier, number and date range, and print
-human-readable tables using Rich.
-"""
+"""CLI command for showing individual invoices/credit notes with Rich rendering."""
 
 import logging
 from datetime import date, datetime
 from pathlib import Path
-from typing import cast
+from typing import Annotated, cast
 
 import typer
 from rich import box
-from rich.console import Console, Group
-from rich.table import Table
-from rich.columns import Columns
-from rich.panel import Panel
-from rich.text import Text
 from rich.align import Align
+from rich.columns import Columns
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from libanaf.config import get_settings
 from libanaf.invoices.common import DateValidationError, ensure_date_range, format_money, format_percent
 from libanaf.invoices.query import collect_documents
-from libanaf.ubl.cac import Party, CreditNoteLine, InvoiceLine
+from libanaf.ubl.cac import CreditNoteLine, InvoiceLine, Party
 from libanaf.ubl.credit_note import CreditNote
 from libanaf.ubl.invoice import Invoice
 
@@ -30,30 +25,27 @@ logger = logging.getLogger(__name__)
 console = Console()
 
 
-def show_invoices(
-    invoice_number: str | None,
-    supplier_name: str | None,
-    start_date: date | datetime | None,
-    end_date: date | datetime | None,
+def show(
+    invoice_number: Annotated[str | None, typer.Option("--invoice-number", "-i", help="Invoice Number")] = None,
+    supplier_name: Annotated[str | None, typer.Option("--supplier-name", "-s", help="Supplier Name")] = None,
+    start_date: Annotated[datetime | None, typer.Option("--start-date", "-sd", help="Start Date")] = None,
+    end_date: Annotated[datetime | None, typer.Option("--end-date", "-ed", help="End Date")] = None,
 ) -> None:
-    """Show invoices from local storage filtered by criteria.
-
-    Args:
-        invoice_number: Partial or full invoice number to search in XML `<cbc:ID>`.
-        supplier_name: Partial or full supplier name to search in XML `<cbc:Name|RegistrationName>`.
-        start_date: Inclusive start date (YYYY-MM-DD) when combined with `end_date`.
-        end_date: Inclusive end date (YYYY-MM-DD) when combined with `start_date`.
-
-    Raises:
-        typer.Exit: If no filters are provided.
+    """Show all matching invoices. Filtering options:
+    - partial invoice_number
+    - partial supplier_name
+    - start_date / end_date in yyyy-mm-dd format
+    (At least one of these filters is required.)
     """
-    logger.debug(
-        f"show_invoices: invoice_number={invoice_number}, supplier_name={supplier_name}, start_date={start_date}, end_date={end_date}"
+    typer.echo(
+        f"Starting show_invoices with params: invoice_number={invoice_number}, supplier_name={supplier_name}, "
+        f"start_date={start_date}, end_date={end_date}"
     )
-    # 1) Validate at least one filter
+
     if not any([invoice_number, supplier_name, (start_date and end_date)]):
         console.print(
-            "❌ [bold red]Error: You must specify at least one filter, such as --invoice-number, --supplier-name, or both --start-date and --end-date.[/bold red]"
+            "❌ [bold red]Error: You must specify at least one filter, such as --invoice-number, "
+            "--supplier-name, or both --start-date and --end-date.[/bold red]"
         )
         raise typer.Exit(code=1)
 
@@ -69,10 +61,9 @@ def show_invoices(
         raise typer.Exit(code=1)
 
     settings = get_settings()
-    dlds_dir = settings.storage.download_dir
+    search_dir = Path(settings.storage.download_dir).resolve()
+    logger.debug(f"show collect_documents: dir={search_dir}")
 
-    search_dir = Path(dlds_dir).resolve()
-    logger.debug(f"product-summary collect_documents: dir={search_dir}")
     documents = collect_documents(
         search_dir,
         invoice_number=invoice_number,
@@ -86,112 +77,33 @@ def show_invoices(
         console.print("[yellow]No matching invoices or credit notes found.[/yellow]")
         return
 
-    logger.debug(f"product-summary collect_documents: parsed {len(documents)} documents")
-
-    # display_documents(documents)
+    logger.debug(f"show collect_documents: parsed {len(documents)} documents")
     display_documents_pdf_style(documents)
-
-
-def display_documents(docs: list[Invoice | CreditNote]) -> None:
-    """Render a simple Rich table for each document.
-
-    Shows supplier name, document ID/date, and line items with quantity and
-    price. Intended as a compact, console-friendly view.
-
-    Args:
-        docs: Parsed `Invoice` or `CreditNote` instances to display.
-    """
-    if not docs:
-        console.print("[bold red]No matching invoices/credit notes found.[/bold red]")
-        return
-
-    for doc in docs:
-        # 1) Extract top-level info
-        #    doc.accounting_supplier_party.party -> either has party_name or party_legal_entity
-        party = doc.accounting_supplier_party.party
-        if party.party_name and party.party_name.name:
-            supplier_name = party.party_name.name
-        elif party.party_legal_entity and party.party_legal_entity.registration_name:
-            supplier_name = party.party_legal_entity.registration_name
-        else:
-            supplier_name = "Unknown"
-
-        doc_id = doc.id
-        issue_date_str = str(doc.issue_date)
-
-        # 2) Build the Rich table for this document
-        #    The title can have multiple lines by using \n
-        table_title = f"{supplier_name}\n{doc_id}\n{issue_date_str}"
-        table = Table(
-            title=table_title,
-            show_header=True,
-            header_style="bold white on navy_blue",
-            width=1200,
-        )
-
-        # 3) Add columns for item details
-        table.add_column("Item Name", justify="left", style="cyan", no_wrap=True)
-        table.add_column("Quantity", justify="right", style="green")
-        table.add_column("Price", justify="right", style="magenta")
-
-        # 4) Get line items, which differ for Invoice vs. CreditNote
-        if isinstance(doc, Invoice):
-            line_items = doc.invoice_line
-            # quantity -> line.invoiced_quantity
-        elif isinstance(doc, CreditNote):
-            line_items = doc.credit_note_line
-            # quantity -> line.credited_quantity
-        else:
-            raise ValueError(f"Unknown document type: {doc}")
-
-        for line in line_items:
-            item_name = line.item.name
-            # Depending on doc type, quantity field differs
-            if isinstance(doc, Invoice):
-                line = cast(InvoiceLine, line)
-                quantity_str = str(line.invoiced_quantity)
-            else:
-                line = cast(CreditNoteLine, line)
-                quantity_str = str(line.credited_quantity)
-
-            price_str = f"{line.price.price_amount:.2f}"  # pyright: ignore
-
-            table.add_row(item_name, quantity_str, price_str)
-
-        # 5) Print the table for this doc
-        console.print(table)
 
 
 def get_supplier_str(party: Party) -> str:
     """Format party information for display.
 
     Args:
-        party: The `Party` object to format.
+        party: The ``Party`` object to format.
 
     Returns:
         str: A single, formatted string suitable for headers.
     """
     formatted, *_ = party.get_display_str().values()
-
     return formatted
 
 
 def display_header(doc: Invoice | CreditNote) -> None:
     """Print a header section for a document using Rich.
 
-    Includes supplier/customer information, document ID/date and due date
-    along with payment means, mimicking a PDF-style header.
-
     Args:
-        doc: The `Invoice` or `CreditNote` to describe.
+        doc: The ``Invoice`` or ``CreditNote`` to describe.
     """
-    # 1) Gather or compute top-level info
-    # doc_type = doc.__class__.__name__  # "Invoice" or "CreditNote"
     doc_id: str = doc.id
-    doc_date: date = doc.issue_date  # a datetime.date
-    due_date: date | None = doc.due_date  # might be None if not set
+    doc_date: date = doc.issue_date
+    due_date: date | None = doc.due_date
 
-    # For the supplier name & address:
     supplier_party: Party = doc.accounting_supplier_party.party
     supplier = get_supplier_str(supplier_party)
 
@@ -200,10 +112,7 @@ def display_header(doc: Invoice | CreditNote) -> None:
         for p in doc.payment_means:
             formatted = p.get_display_str()["formatted"]
             payment_means = f"{payment_means}{formatted}\n"
-    else:
-        payment_means = ""
 
-    # For the customer name & address, similar
     customer_party: Party = doc.accounting_customer_party.party
     customer = get_supplier_str(customer_party)
 
@@ -216,23 +125,79 @@ def display_header(doc: Invoice | CreditNote) -> None:
     )
     header_table.add_column("[bold]FURNIZOR[/bold]", justify="left")
     header_table.add_column("CLIENT", justify="left")
-
-    # GURSK MEDICA SRL
-    # CIF: RO25629635
-    # Reg. com.: J23/1344/2012
-    # Adresa: INTR. VLASCEANU DUMITRU, Voluntari
-    # Judet: Ilfov
-    # IBAN: RO51BACX0000000363717001
-    # Banca: UNICREDIT BANK SA
-
     header_table.add_row(f"{supplier}{payment_means}", customer)
-
     console.print(header_table)
 
 
-# ------------------------------
-# Formatting helpers and renderer
-# ------------------------------
+def display_documents(docs: list[Invoice | CreditNote]) -> None:
+    """Render a simple Rich table for each document.
+
+    Args:
+        docs: Parsed ``Invoice`` or ``CreditNote`` instances to display.
+    """
+    if not docs:
+        console.print("[bold red]No matching invoices/credit notes found.[/bold red]")
+        return
+
+    for doc in docs:
+        party = doc.accounting_supplier_party.party
+        if party.party_name and party.party_name.name:
+            supplier_name = party.party_name.name
+        elif party.party_legal_entity and party.party_legal_entity.registration_name:
+            supplier_name = party.party_legal_entity.registration_name
+        else:
+            supplier_name = "Unknown"
+
+        doc_id = doc.id
+        issue_date_str = str(doc.issue_date)
+
+        table_title = f"{supplier_name}\n{doc_id}\n{issue_date_str}"
+        table = Table(
+            title=table_title,
+            show_header=True,
+            header_style="bold white on navy_blue",
+            width=1200,
+        )
+        table.add_column("Item Name", justify="left", style="cyan", no_wrap=True)
+        table.add_column("Quantity", justify="right", style="green")
+        table.add_column("Price", justify="right", style="magenta")
+
+        if isinstance(doc, Invoice):
+            line_items = doc.invoice_line
+        elif isinstance(doc, CreditNote):
+            line_items = doc.credit_note_line
+        else:
+            raise ValueError(f"Unknown document type: {doc}")
+
+        for line in line_items:
+            item_name = line.item.name
+            if isinstance(doc, Invoice):
+                line = cast(InvoiceLine, line)
+                quantity_str = str(line.invoiced_quantity)
+            else:
+                line = cast(CreditNoteLine, line)
+                quantity_str = str(line.credited_quantity)
+
+            price_str = f"{line.price.price_amount:.2f}"  # pyright: ignore
+
+            table.add_row(item_name, quantity_str, price_str)
+
+        console.print(table)
+
+
+def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
+    """Render each document as a PDF-like multi-section table.
+
+    Args:
+        docs: Parsed ``Invoice`` or ``CreditNote`` instances to display.
+    """
+    if not docs:
+        console.print("[bold red]No matching documents found.[/bold red]")
+        return
+
+    renderer = InvoiceRenderer(console)
+    for doc in docs:
+        renderer.render(doc)
 
 
 def _format_qty(value: float | int | None) -> str:
@@ -254,8 +219,12 @@ class InvoiceRenderer:
     def __init__(self, console: Console) -> None:
         self.console = console
 
-    # ---------- high level ----------
     def render(self, doc: Invoice | CreditNote) -> None:
+        """Render a single invoice or credit note to the console.
+
+        Args:
+            doc: The document to render.
+        """
         title = self._build_title(doc)
         header_row = self._build_header_row(doc)
         lines_table = self._build_lines_table(doc)
@@ -272,7 +241,6 @@ class InvoiceRenderer:
         if footer is not None:
             self.console.print(footer)
 
-    # ---------- builders ----------
     def _build_title(self, doc: Invoice | CreditNote) -> Panel:
         is_credit = isinstance(doc, CreditNote)
         doc_type = "NOTA DE CREDIT" if is_credit else "FACTURA"
@@ -295,9 +263,8 @@ class InvoiceRenderer:
         return Columns([supplier_panel, details_panel, client_panel], expand=True, equal=True)
 
     def _build_supplier_panel(self, doc: Invoice | CreditNote) -> Panel:
-        supplier_text = Text(doc.accounting_supplier_party.party.get_display_str()["formatted"])  # name, cif, address
+        supplier_text = Text(doc.accounting_supplier_party.party.get_display_str()["formatted"])
 
-        # PLATA under Furnizor
         payments_group = None
         if doc.payment_means:
             payments_text = Text()
@@ -327,7 +294,6 @@ class InvoiceRenderer:
         text = party.get_display_str()["formatted"]
         return Panel(Text(text), title=title, padding=(0, 1))
 
-    # Detalii Document section removed per request
     def _build_doc_meta(self, doc: Invoice | CreditNote) -> Panel | None:  # noqa: D401
         return None
 
@@ -343,7 +309,6 @@ class InvoiceRenderer:
             expand=True,
             show_lines=False,
         )
-
         table.add_column("#", justify="right", style="bold", no_wrap=True)
         table.add_column("Denumire", style="cyan")
         table.add_column("U.M.", justify="center", no_wrap=True)
@@ -367,12 +332,10 @@ class InvoiceRenderer:
             unit_code = (
                 getattr(line, unit_field, None) or (line.price.base_quantity_unit_code if line.price else None) or "H87"
             )
-
             qty = getattr(line, qty_field, 0.0) or 0.0
             unit_price = (line.price.price_amount if line.price else None) or 0.0
             base_value = line.line_extension_amount or 0.0
 
-            # Prefer explicit line AllowanceCharge discounts if present; fallback to implied
             discount_value = 0.0
             try:
                 if getattr(line, "allowance_charge", None):
@@ -387,7 +350,6 @@ class InvoiceRenderer:
                 if abs(implied_discount) >= 0.005:
                     discount_value = implied_discount
 
-            # VAT percent and value
             percent = (
                 line.item.classified_tax_category.percent
                 if line.item.classified_tax_category and line.item.classified_tax_category.percent is not None
@@ -395,7 +357,6 @@ class InvoiceRenderer:
             )
             vat_value = base_value * (percent / 100.0)
 
-            # Credit notes shown as negatives
             sign = -1.0 if is_credit else 1.0
             qty *= sign
             unit_price *= sign
@@ -422,7 +383,6 @@ class InvoiceRenderer:
         else:
             lines = doc.credit_note_line
 
-        # Group by percent
         groups: dict[float, dict[str, float]] = {}
         for line in lines:
             percent = (
@@ -484,7 +444,7 @@ class InvoiceRenderer:
             rows.append(("Total TVA", (tax_amount or 0.0) * sign))
         if lmt.tax_inclusive_amount and abs(lmt.tax_inclusive_amount) > 0.0:
             rows.append(("Total cu TVA", (lmt.tax_inclusive_amount or 0.0) * sign))
-        # Prefer explicit document-level AllowanceCharge list if present
+
         doc_discount = None
         doc_charge = None
         try:
@@ -547,21 +507,3 @@ class InvoiceRenderer:
 
         txt = Text("\n".join(items))
         return Panel(txt, title="Note", padding=(0, 1))
-
-
-def display_documents_pdf_style(docs: list[Invoice | CreditNote]) -> None:
-    """Render each document as a PDF-like multi-section table.
-
-    Produces a header and a detailed line-item table similar to an invoice
-    PDF, including quantities, unit prices, values and VAT calculation.
-
-    Args:
-        docs: Parsed `Invoice` or `CreditNote` instances to display.
-    """
-    if not docs:
-        console.print("[bold red]No matching documents found.[/bold red]")
-        return
-
-    renderer = InvoiceRenderer(console)
-    for doc in docs:
-        renderer.render(doc)

@@ -4,7 +4,7 @@ from typing import Annotated
 import typer
 
 from libanaf.config import get_settings, setup_logging
-from libanaf.invoices.app import app as invoices_app
+from libanaf.cli.invoices import app as invoices_app
 from libanaf.cli.auth import auth as auth_command
 from libanaf.cli.auth import show_token as show_token_command
 

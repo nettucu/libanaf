@@ -1,23 +1,25 @@
 
-from datetime import date, datetime
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
 
-from libanaf.invoices.show import show_invoices
-from libanaf.invoices.common import DateValidationError
+from libanaf.cli.invoices.show import _format_qty, get_supplier_str, show
+from libanaf.invoices.common import DateValidationError, format_money, format_percent
 
 
-@patch("libanaf.invoices.show.collect_documents")
-@patch("libanaf.invoices.show.display_documents_pdf_style")
-@patch("libanaf.invoices.show.get_settings")
+@patch("libanaf.cli.invoices.show.collect_documents")
+@patch("libanaf.cli.invoices.show.display_documents_pdf_style")
+@patch("libanaf.cli.invoices.show.get_settings")
 def test_show_invoices(mock_get_settings, mock_display_docs, mock_collect_docs):
-    """Test that show_invoices calls dependencies with correct arguments."""
-    mock_get_settings.return_value = MagicMock(download_dir="/tmp")
+    """Test that show calls dependencies with correct arguments."""
+    mock_settings = MagicMock()
+    mock_settings.storage.download_dir = "/tmp"
+    mock_get_settings.return_value = mock_settings
     mock_collect_docs.return_value = [MagicMock()]
 
-    show_invoices(
+    show(
         invoice_number="INV-001",
         supplier_name="Supplier",
         start_date=datetime(2025, 1, 1),
@@ -29,40 +31,39 @@ def test_show_invoices(mock_get_settings, mock_display_docs, mock_collect_docs):
 
 
 def test_show_invoices_no_filters():
-    """Test that show_invoices exits if no filters are provided."""
+    """Test that show exits if no filters are provided."""
     with pytest.raises(typer.Exit):
-        show_invoices(None, None, None, None)
+        show(None, None, None, None)
 
 
-@patch("libanaf.invoices.show.ensure_date_range")
+@patch("libanaf.cli.invoices.show.ensure_date_range")
 def test_show_invoices_date_validation_error(mock_ensure_date_range):
-    """Test that show_invoices handles DateValidationError."""
+    """Test that show handles DateValidationError."""
     mock_ensure_date_range.side_effect = DateValidationError("both_required")
     with pytest.raises(typer.Exit):
-        show_invoices(None, None, datetime(2025, 1, 1), None)
+        show(None, None, datetime(2025, 1, 1), None)
 
-
-from libanaf.invoices.common import format_money, format_percent
-from libanaf.invoices.show import _format_qty, get_supplier_str
 
 def test_format_money():
     """Test the format_money function."""
     assert format_money(1234.56, "RON") == "1,234.56 RON"
     assert format_money(None, "RON") == ""
 
+
 def test_format_qty():
     """Test the _format_qty function."""
     assert _format_qty(1234.56) == "1,234.56"
     assert _format_qty(None) == ""
+
 
 def test_format_percent():
     """Test the format_percent function."""
     assert format_percent(19.0) == "19%"
     assert format_percent(None) == "0%"
 
+
 def test_get_supplier_str():
     """Test the get_supplier_str function."""
     mock_party = MagicMock()
     mock_party.get_display_str.return_value = {"formatted": "Formatted Name"}
     assert get_supplier_str(mock_party) == "Formatted Name"
-

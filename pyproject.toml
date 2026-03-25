@@ -9,8 +9,6 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "requests>=2.31.0",
-    "typer>=0.16.0",
-    "rich>=13.7.1",
     "python-dotenv>=1.0.1",
     "pydantic-settings>=2.0",
     "flask>=3.0.3",
@@ -27,6 +25,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cli = [
+    "typer>=0.16.0",
+    "rich>=13.7.1",
+]
 dev = [
     "pytest>=8.2.0",
     "pytest-asyncio>=0.23.7",

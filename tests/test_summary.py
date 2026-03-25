@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-import typer
 from rich.console import Console
 
 from libanaf.config import Settings
@@ -13,6 +12,7 @@ from libanaf.invoices.summary import (
     collect_documents,
     summarize_invoices,
 )
+from libanaf.cli.invoices.summary import render_summary
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "tests" / "fixtures"
@@ -64,29 +64,27 @@ def test_build_summary_rows_orders_and_signs() -> None:
     assert rows[1].payable_amount == pytest.approx(-242.0, rel=1e-6)
 
 
-def test_summarize_invoices_requires_filter(dummy_settings: Settings) -> None:
-    console = Console(record=True)
-    with pytest.raises(typer.Exit):
-        summarize_invoices(
-            invoice_number=None,
-            supplier_name=None,
-            start_date=None,
-            end_date=None,
-            settings=dummy_settings,
-            output=console,
-        )
+def test_summarize_invoices_returns_empty_for_no_results(dummy_settings: Settings) -> None:
+    rows = summarize_invoices(
+        invoice_number="NONEXISTENT-999",
+        supplier_name=None,
+        start_date=None,
+        end_date=None,
+        settings=dummy_settings,
+    )
+    assert rows == []
 
 
 def test_summarize_invoices_filters_by_date(dummy_settings: Settings) -> None:
     console = Console(record=True, width=200)
-    summarize_invoices(
+    rows = summarize_invoices(
         invoice_number=None,
         supplier_name="NASTIMED SERV SRL",
         start_date=datetime(2025, 2, 1),
         end_date=datetime(2025, 2, 12),
         settings=dummy_settings,
-        output=console,
     )
+    render_summary(rows, output=console)
 
     text_output = console.export_text(clear=False)
     assert "BVAG-2025 3011146" in text_output
