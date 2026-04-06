@@ -9,11 +9,12 @@ import logging
 
 import httpx
 from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.oauth2.rfc6749.errors import OAuth2Error
 from httpx import HTTPStatusError, Response
 
 from libanaf.auth import AnafAuthClient
 from libanaf.config import get_settings
-from libanaf.exceptions import AnafRequestError
+from libanaf.exceptions import AnafRequestError, TokenExpiredError
 from libanaf.invoices._retry import anaf_retrying
 from libanaf.types import Filter
 
@@ -68,6 +69,9 @@ async def fetch_invoice_list(
                 response: Response = await client.get(url=base_url, params=params)
                 response.raise_for_status()
                 response_data = response.json()
+    except OAuth2Error as e:
+        logger.error(f"OAuth2 token error — refresh token likely expired: {e}")
+        raise TokenExpiredError(f"ANAF OAuth2 token is expired and cannot be refreshed: {e}") from e
     except (json.JSONDecodeError, ValueError) as e:
         logger.error(f"Invalid JSON response: {e}")
         raise AnafRequestError(f"Invalid JSON received from ANAF: {e}") from e

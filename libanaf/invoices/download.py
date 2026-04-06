@@ -4,7 +4,6 @@ import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 
-import httpx
 from httpx import AsyncClient, HTTPStatusError, Response
 from rich.console import Console
 from rich.progress import (
@@ -18,8 +17,11 @@ from rich.progress import (
 from libanaf.types import Filter
 from libanaf.auth import AnafAuthClient
 from libanaf.config import get_settings
+from libanaf.exceptions import TokenExpiredError
+from libanaf.failure_tracker import record_network_failure, record_success
 from libanaf.invoices._retry import anaf_retrying
 from libanaf.invoices.list import fetch_invoice_list
+from libanaf.notifications import send_network_failure_alert, send_token_expired_alert
 
 
 def is_invoice_downloaded(message: dict[str, str], download_dir: Path) -> bool:
@@ -193,6 +195,8 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
 
         if not messages:
             console.print("[bold yellow]No messages found to download.[/bold yellow]")
+            if settings.notification.email_to:
+                record_success(settings.state.state_file)
             return
 
         invoices_to_download: list[str] = []
@@ -204,6 +208,8 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
         if not invoices_to_download:
             console.print("[bold green]All invoices are already downloaded.[/bold green]")
             logger.info("All invoices are already downloaded.")
+            if settings.notification.email_to:
+                record_success(settings.state.state_file)
             return
 
         console.print(f"[bold blue]Downloading {len(invoices_to_download)} invoices...[/bold blue]")
@@ -212,10 +218,48 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
         loop.run_until_complete(download_all_invoices(invoices_to_download, download_dir))
         console.print("[bold green]Downloaded all missing invoices.[/bold green]")
         logger.info("Downloaded all missing invoices.")
+        if settings.notification.email_to:
+            record_success(settings.state.state_file)
 
+    except TokenExpiredError as e:
+        logger.error(f"ANAF token expired — hard re-auth required: {e}", exc_info=e)
+        console.print("[bold red]ANAF token expired:[/bold red] run 'libanaf auth' to re-authorize.")
+        if settings.notification.email_to:
+            send_token_expired_alert(
+                to=settings.notification.email_to,
+                error=str(e),
+                smtp_host=settings.notification.smtp_host,
+                smtp_port=settings.notification.smtp_port,
+                smtp_user=settings.notification.smtp_user,
+                smtp_password=settings.notification.smtp_password,
+            )
     except HTTPStatusError as e:
         console.print(f"[bold red]HTTP error occurred:[/bold red] {e}")
         logger.error(f"HTTP error occurred: {e}", exc_info=e, stack_info=True)
+        if settings.notification.email_to:
+            threshold = settings.notification.network_failure_threshold
+            if record_network_failure(settings.state.state_file, threshold):
+                send_network_failure_alert(
+                    to=settings.notification.email_to,
+                    error=str(e),
+                    failure_count=threshold,
+                    smtp_host=settings.notification.smtp_host,
+                    smtp_port=settings.notification.smtp_port,
+                    smtp_user=settings.notification.smtp_user,
+                    smtp_password=settings.notification.smtp_password,
+                )
     except Exception as e:
         logger.error(f"Unexpected ERROR {e}", exc_info=e, stack_info=True)
         console.print(f"[bold red]An error occurred:[/bold red] {e}")
+        if settings.notification.email_to:
+            threshold = settings.notification.network_failure_threshold
+            if record_network_failure(settings.state.state_file, threshold):
+                send_network_failure_alert(
+                    to=settings.notification.email_to,
+                    error=str(e),
+                    failure_count=threshold,
+                    smtp_host=settings.notification.smtp_host,
+                    smtp_port=settings.notification.smtp_port,
+                    smtp_user=settings.notification.smtp_user,
+                    smtp_password=settings.notification.smtp_password,
+                )

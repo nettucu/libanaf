@@ -3,8 +3,9 @@ __pycache__/
 *.pyo
 *.pyd
 tokens.json
-secrets/
+secrets/*
 .env*
+!secrets/.env.example
 logs/
 dlds/
 conf/systemd

@@ -59,6 +59,23 @@ class LogSettings(BaseModel):
     file: Path | None = None
 
 
+class NotificationSettings(BaseModel):
+    """Email alert settings for sync failures."""
+
+    email_to: str | None = None
+    smtp_host: str = "localhost"
+    smtp_port: int = 25
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    network_failure_threshold: int = 5
+
+
+class StateSettings(BaseModel):
+    """Paths for persistent runtime state across sync runs."""
+
+    state_file: Path = Path("state/sync_state.json")
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="LIBANAF_",
@@ -73,6 +90,8 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     retry: RetrySettings = RetrySettings()
     log: LogSettings = LogSettings()
+    notification: NotificationSettings = NotificationSettings()
+    state: StateSettings = StateSettings()
 
 
 @lru_cache(maxsize=1)

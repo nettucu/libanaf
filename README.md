@@ -22,6 +22,7 @@ See also: [Architecture](ARCHITECTURE.md) · [Domain Glossary](CONTEXT.md) · [A
 - **UBL 2.1 + RO-CIUS** invoice and credit note parsing (pydantic-xml)
 - **Invoice summary** and **product-level summary** with precise discount allocation
 - **Local PDF rendering** from UBL XML without an ANAF API call
+- **Email alerts** on sync failure: immediate notification when the ANAF refresh token is expired (hard re-auth required); threshold-based notification (default: 5 consecutive runs) for network/API outages
 
 ---
 

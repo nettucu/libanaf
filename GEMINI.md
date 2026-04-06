@@ -31,6 +31,9 @@ This document provides essential context for AI models interacting with this pro
     *   `/libanaf/cli/invoices`: Typer commands for invoice management (`list`, `show`, `summary`, `prod-summary`, `download`, `process`, `render-pdf`).
     *   `/libanaf/invoices`: Pure library package — fetch, download, process, query, and summarize invoices. No CLI dependencies.
     *   `/libanaf/ubl`: UBL XML deserialization and validation via pydantic-xml.
+    *   `/libanaf/failure_tracker.py`: Persistent JSON counter for consecutive sync failures across systemd restarts.
+    *   `/libanaf/notifications.py`: Email alert helpers (`send_token_expired_alert`, `send_network_failure_alert`) via stdlib `smtplib`.
+    *   `/secrets/.env.example`: Full reference for all environment variables (safe to commit — no real secrets).
     *   `/tests`: Unit and integration tests, with fixtures in `/tests/fixtures`.
     *   `/ai/briefs`: Task specifications for AI agents.
     *   `/docs`: Project documentation and sample files.
@@ -43,12 +46,12 @@ This document provides essential context for AI models interacting with this pro
     *   `classes`: `PascalCase` (e.g., `LibANAF_AuthClient`)
     *   `files`: `snake_case` (e.g., `product_summary.py`)
 * **API Design:** The internal API is modular. The external interaction is with the ANAF REST/JSON API. The CLI follows a command/subcommand structure (e.g., `libanaf invoices prod-summary`).
-* **Error Handling:** The application uses custom exceptions (e.g., `AnafAuthError`, `AnafRequestError`) and implements a retry policy with exponential backoff for handling transient API errors.
+* **Error Handling:** The application uses custom exceptions (`AnafRequestError` for HTTP/API errors; `AuthorizationError` → `TokenExpiredError` when the OAuth2 refresh token is expired and a hard re-auth is required) and implements a retry policy with exponential backoff for transient API errors. On sync failure, email alerts are sent via `libanaf/notifications.py` (STARTTLS + Gmail App Password); the consecutive failure count is persisted across runs in a JSON file by `libanaf/failure_tracker.py`.
 
 ## 5. Key Files & Entrypoints
 
 * **Main Entrypoint(s):** The primary entrypoint for the CLI application is the `app` object in `libanaf/cli/app.py`, which is exposed as a script via `pyproject.toml` (`libanaf.cli:app`).
-* **Configuration:** Configuration is loaded from a `.env` file (default: `secrets/.env`, overridden by `LIBANAF_ENV_FILE` env var) via `pydantic-settings` with env prefix `LIBANAF_` and nested delimiter `__` (e.g. `LIBANAF_AUTH__CLIENT_ID`). The `libanaf/config.py` module manages access via the cached `get_settings()` function.
+* **Configuration:** Configuration is loaded from a `.env` file (default: `secrets/.env`, overridden by `LIBANAF_ENV_FILE` env var) via `pydantic-settings` with env prefix `LIBANAF_` and nested delimiter `__` (e.g. `LIBANAF_AUTH__CLIENT_ID`). The `libanaf/config.py` module manages access via the cached `get_settings()` function. Settings sections: `auth`, `connection`, `efactura`, `storage`, `retry`, `log`, `notification` (email alerts), `state` (failure counter path). See `secrets/.env.example` for a full reference.
 * **CI/CD Pipeline:** No CI/CD pipeline configuration file (e.g., `.github/workflows/`) was detected in the project structure.
 
 ## 6. Development & Testing Workflow

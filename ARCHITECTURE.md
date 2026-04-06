@@ -12,8 +12,10 @@ libanaf is a modular Python package (≥3.11) that exposes both a **library API*
 libanaf/
 ├── __init__.py              # Public API — re-exports from all sub-packages via __all__
 ├── config.py                # Settings(BaseSettings) — env prefix LIBANAF_, nested delimiter __
-├── exceptions.py            # AnafException → AnafRequestError, AuthorizationError
+├── exceptions.py            # AnafException → AnafRequestError, AuthorizationError → TokenExpiredError
 ├── types.py                 # Shared types: Filter enum (E/T/P/R)
+├── failure_tracker.py       # Persistent JSON failure counter for sync monitoring
+├── notifications.py         # Email alerts via smtplib (STARTTLS + auth for Gmail)
 │
 ├── auth/
 │   ├── __init__.py          # Re-exports: AnafAuthClient, OAuthCallbackServer
@@ -94,6 +96,18 @@ collect_documents(dlds/)
   → returns list[Invoice | CreditNote]
 ```
 
+### Sync failure notification
+```
+invoices download (failure path)
+  → TokenExpiredError (OAuth2Error from authlib on failed token refresh)
+      → send_token_expired_alert() immediately via smtp.gmail.com:587
+  → HTTPStatusError / Exception (network/API outage)
+      → record_network_failure(state/sync_state.json)
+      → if count >= threshold: send_network_failure_alert()
+  → success
+      → record_success() — resets counter to 0
+```
+
 ---
 
 ## 4. Configuration
@@ -108,9 +122,18 @@ Settings are loaded via `pydantic-settings` with env prefix `LIBANAF_` and neste
 | `storage` | `download_dir` | `LIBANAF_STORAGE__DOWNLOAD_DIR` |
 | `retry` | `count` | `LIBANAF_RETRY__COUNT` |
 | `log` | `file` | `LIBANAF_LOG__FILE` |
+| `notification` | `email_to` | `LIBANAF_NOTIFICATION__EMAIL_TO` |
+| `notification` | `smtp_host` | `LIBANAF_NOTIFICATION__SMTP_HOST` |
+| `notification` | `smtp_port` | `LIBANAF_NOTIFICATION__SMTP_PORT` |
+| `notification` | `smtp_user` | `LIBANAF_NOTIFICATION__SMTP_USER` |
+| `notification` | `smtp_password` | `LIBANAF_NOTIFICATION__SMTP_PASSWORD` |
+| `notification` | `network_failure_threshold` | `LIBANAF_NOTIFICATION__NETWORK_FAILURE_THRESHOLD` |
+| `state` | `state_file` | `LIBANAF_STATE__STATE_FILE` |
 
 The env file path defaults to `secrets/.env` and is overridden by `LIBANAF_ENV_FILE`.
 `get_settings()` is `@lru_cache` — call `get_settings.cache_clear()` after writing new tokens.
+
+Notifications are **disabled by default** (`email_to` is unset). Set `LIBANAF_NOTIFICATION__EMAIL_TO` to activate. See `secrets/.env.example` for a complete reference.
 
 ---
 
@@ -137,8 +160,21 @@ The env file path defaults to `secrets/.env` and is overridden by `LIBANAF_ENV_F
 - `AnafException` — base
   - `AnafRequestError` — HTTP or API-level errors (ANAF returned `"eroare"`)
   - `AuthorizationError` — OAuth flow failures
+    - `TokenExpiredError` — refresh token is invalid; hard re-auth via `libanaf auth` is required
 - Retry policy: `anaf_retrying()` (tenacity) — exponential backoff on transient errors; configured via `settings.retry.*`
 - CLI layer catches library exceptions and prints user-friendly messages via Rich before exiting with non-zero code
+
+### Sync failure notifications (`download()`)
+
+`invoices/download.py::download()` distinguishes two failure modes and acts accordingly:
+
+| Failure type | Detection | Behaviour |
+|---|---|---|
+| Token expired | `OAuth2Error` from authlib → `TokenExpiredError` | Send email immediately, no counter |
+| Network / API error | `HTTPStatusError` or any other exception | Increment `state_file` counter; send email when count ≥ `network_failure_threshold` (default 5) |
+| Success | Normal completion | Reset counter to 0 |
+
+Counter is persisted in a JSON file (`settings.state.state_file`, default `state/sync_state.json`) so it survives across systemd restarts.
 
 ---
 
