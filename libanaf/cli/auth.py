@@ -12,6 +12,8 @@ from rich.panel import Panel
 from rich.table import Table
 
 from libanaf.auth import AnafAuthClient
+from libanaf.auth.server import OAuthCallbackServer
+from libanaf.auth.tls import ensure_tls_cert
 from libanaf.config import Settings, save_tokens
 from libanaf.exceptions import AuthorizationError
 
@@ -70,6 +72,31 @@ def show_token(
 
     if verify:
         _verify_refresh_token(settings)
+
+
+def test_tls_server(ctx: typer.Context) -> None:
+    """Start the local HTTPS callback server standalone, for TLS verification without the full ANAF flow.
+
+    Ensures/generates the self-signed cert, starts the same
+    ``OAuthCallbackServer`` used during ``auth``, and prints a URL to open
+    manually in a browser. Blocks until that request arrives, then prints
+    the received query parameters. Useful for isolating TLS/browser issues
+    (e.g. ``ERR_SSL_PROTOCOL_ERROR``) from ANAF-side authorization problems.
+    """
+    settings: Settings = ctx.obj
+    cert_path, key_path = ensure_tls_cert(settings.connection.tls_cert_file, settings.connection.tls_key_file)
+
+    console.print(f"[cyan]Using cert:[/cyan] {cert_path}\n[cyan]Using key:[/cyan]  {key_path}")
+    console.print(
+        "[bold]Open this URL in the browser you're testing "
+        "(accept the self-signed cert warning):[/bold]\n"
+        "https://localhost:8000/callback?code=test-tls-verification"
+    )
+
+    server = OAuthCallbackServer(use_ssl=True, cert_file=str(cert_path), key_file=str(key_path))
+    response = server.get_auth_response()
+
+    console.print(Panel(f"[green]TLS handshake OK. Received:[/green] {dict(response)}", title="Test TLS Server"))
 
 
 # ── helpers ────────────────────────────────────────────────────────────────────
