@@ -9,3 +9,5 @@ secrets/*
 logs/
 dlds/
 conf/systemd
+state/
+state/*
