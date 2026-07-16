@@ -1,11 +1,14 @@
 import datetime
 import ipaddress
+import logging
 from pathlib import Path
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_CERT_FILE = Path("secrets/localhost.crt")
 DEFAULT_KEY_FILE = Path("secrets/localhost.key")
@@ -32,7 +35,10 @@ def ensure_tls_cert(cert_file: Path | None, key_file: Path | None) -> tuple[Path
     key_path = key_file or DEFAULT_KEY_FILE
 
     if cert_path.exists() and key_path.exists():
+        logger.debug(f"Reusing existing TLS cert/key: {cert_path}, {key_path}")
         return cert_path, key_path
+
+    logger.info(f"No TLS cert/key found at {cert_path} / {key_path}; generating self-signed pair.")
 
     cert_path.parent.mkdir(parents=True, exist_ok=True)
     key_path.parent.mkdir(parents=True, exist_ok=True)
@@ -65,5 +71,7 @@ def ensure_tls_cert(cert_file: Path | None, key_file: Path | None) -> tuple[Path
         )
     )
     cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+
+    logger.info(f"Generated self-signed TLS cert (CN=localhost, valid until {cert.not_valid_after_utc}).")
 
     return cert_path, key_path

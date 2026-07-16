@@ -99,6 +99,7 @@ class AnafAuthClient:
             ImmutableMultiDict: Query parameters from the redirect (``code`` or ``error``).
         """
         cert_path, key_path = ensure_tls_cert(self.cert_file, self.key_file)
+        logger.debug(f"Using TLS cert {cert_path} / key {key_path} for local callback server")
         auth_server = OAuthCallbackServer(use_ssl=True, cert_file=str(cert_path), key_file=str(key_path))
         return auth_server.get_auth_response()
 
