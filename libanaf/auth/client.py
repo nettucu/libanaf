@@ -11,6 +11,7 @@ from libanaf.config import save_tokens
 from libanaf.exceptions import AuthorizationError
 
 from libanaf.auth.server import OAuthCallbackServer
+from libanaf.auth.tls import ensure_tls_cert
 
 logger = logging.getLogger(__name__)
 
@@ -97,10 +98,8 @@ class AnafAuthClient:
         Returns:
             ImmutableMultiDict: Query parameters from the redirect (``code`` or ``error``).
         """
-        use_ssl = self.cert_file is not None and self.key_file is not None
-        cert_str = str(self.cert_file) if self.cert_file else None
-        key_str = str(self.key_file) if self.key_file else None
-        auth_server = OAuthCallbackServer(use_ssl=use_ssl, cert_file=cert_str, key_file=key_str)
+        cert_path, key_path = ensure_tls_cert(self.cert_file, self.key_file)
+        auth_server = OAuthCallbackServer(use_ssl=True, cert_file=str(cert_path), key_file=str(key_path))
         return auth_server.get_auth_response()
 
     def get_authorization_code(self):
