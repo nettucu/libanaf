@@ -1,8 +1,12 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
+from typing import Annotated
 
 import jwt
 import typer
+from authlib.integrations.httpx_client import AsyncOAuth2Client
+from authlib.oauth2.rfc6749 import OAuth2Error
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -40,7 +44,13 @@ def auth(ctx: typer.Context) -> None:
                 raise typer.Exit(1)
 
 
-def show_token(ctx: typer.Context) -> None:
+def show_token(
+    ctx: typer.Context,
+    verify: Annotated[
+        bool,
+        typer.Option("--verify", help="Attempt a live refresh against ANAF to confirm the refresh token is valid."),
+    ] = False,
+) -> None:
     """Decode and display the claims from the stored JWT tokens.
 
     Reads the current access token and refresh token from settings and
@@ -48,16 +58,63 @@ def show_token(ctx: typer.Context) -> None:
     a Rich table. Timestamp claims (exp, iat, nbf, auth_time) are shown
     as both their raw integer value and a human-readable UTC datetime.
     Handles missing tokens and non-JWT (opaque) tokens gracefully.
+
+    ANAF's refresh token is opaque (not a JWT) by design, so its validity
+    cannot be determined by local decoding. Pass ``--verify`` to actually
+    exchange it against the token endpoint instead.
     """
     settings: Settings = ctx.obj
 
     _print_token_panel(settings.connection.access_token, "Access Token")
     _print_token_panel(settings.connection.refresh_token, "Refresh Token")
 
+    if verify:
+        _verify_refresh_token(settings)
+
 
 # ── helpers ────────────────────────────────────────────────────────────────────
 
 _TIMESTAMP_CLAIMS = {"exp", "iat", "nbf", "auth_time"}
+
+
+def _verify_refresh_token(settings: Settings) -> None:
+    """Exchange the stored refresh token against ANAF's token endpoint to confirm it is live.
+
+    ANAF rotates refresh tokens on use, so a successful check replaces the
+    stored refresh token with a new one (via ``save_tokens``) and invalidates
+    the old one. Prompts for confirmation before making the live call.
+
+    Args:
+        settings: Application settings holding auth config and the current refresh token.
+    """
+    if not settings.connection.refresh_token:
+        console.print(Panel("[yellow]No refresh token to verify.[/yellow]", title="Verify Refresh Token"))
+        return
+
+    if not typer.confirm(
+        "This calls ANAF live and will rotate the refresh token (old one becomes invalid). Continue?",
+        default=False,
+    ):
+        raise typer.Exit(0)
+
+    client = AsyncOAuth2Client(
+        client_id=settings.auth.client_id,
+        client_secret=settings.auth.client_secret,
+        token_endpoint=settings.auth.token_url,
+    )
+    try:
+        token = asyncio.run(
+            client.refresh_token(settings.auth.token_url, refresh_token=settings.connection.refresh_token)
+        )
+    except OAuth2Error as e:
+        console.print(Panel(f"[red]Refresh token is INVALID or expired:[/red] {e}", title="Verify Refresh Token"))
+        return
+    except Exception as e:
+        console.print(Panel(f"[red]Verification failed: {e}[/red]", title="Verify Refresh Token"))
+        return
+
+    save_tokens(token)
+    console.print(Panel("[green]Refresh token is VALID. New tokens saved.[/green]", title="Verify Refresh Token"))
 
 
 def _print_token_panel(raw_token: str | None, title: str) -> None:
