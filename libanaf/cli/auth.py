@@ -94,7 +94,11 @@ def test_tls_server(ctx: typer.Context) -> None:
     )
 
     server = OAuthCallbackServer(use_ssl=True, cert_file=str(cert_path), key_file=str(key_path))
-    response = server.get_auth_response()
+    try:
+        response = server.get_auth_response()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Cancelled.[/yellow]")
+        raise typer.Exit(130)
 
     console.print(Panel(f"[green]TLS handshake OK. Received:[/green] {dict(response)}", title="Test TLS Server"))
 

@@ -1,6 +1,6 @@
 import logging
 import threading
-from queue import Queue
+from queue import Empty, Queue
 
 from werkzeug.serving import make_server
 from werkzeug.wrappers import Request, Response
@@ -90,10 +90,21 @@ class OAuthCallbackServer:
 
         t = threading.Thread(target=self.server.serve_forever)
         t.start()
-        response = q.get(block=True)
-
-        logger.debug("Shutting down the temporary web server ...")
-        self.server.shutdown()
-        t.join()
+        try:
+            # Poll with a timeout instead of an unbounded block: on Windows a plain
+            # q.get(block=True) waits at the C level (WaitForSingleObject) and
+            # never returns control to the interpreter to check for a pending
+            # Ctrl+C/SIGINT, so the process becomes unkillable until a request
+            # arrives.
+            while True:
+                try:
+                    response = q.get(timeout=0.5)
+                    break
+                except Empty:
+                    continue
+        finally:
+            logger.debug("Shutting down the temporary web server ...")
+            self.server.shutdown()
+            t.join()
 
         return response
