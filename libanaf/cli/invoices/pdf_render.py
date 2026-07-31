@@ -11,7 +11,7 @@ from rich.console import Console
 
 from libanaf.config import get_settings
 from libanaf.invoices.common import DateValidationError, ensure_date_range
-from libanaf.invoices.pdf_render import render_invoice_pdf
+from libanaf.invoices.pdf_render import local_pdf_path, render_invoice_pdf
 from libanaf.invoices.query import collect_documents
 
 logger = logging.getLogger(__name__)
@@ -132,12 +132,7 @@ def render_pdf(
     ready_paths: list[Path] = []
 
     for doc in sorted(documents, key=lambda d: (d.issue_date, d.id)):
-        try:
-            fname = doc.tofname()
-        except ValueError:
-            fname = doc.id
-
-        output_path = dlds_dir / f"{fname}_local.pdf"
+        output_path = local_pdf_path(doc, dlds_dir)
 
         if output_path.exists():
             skipped += 1

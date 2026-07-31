@@ -544,6 +544,26 @@ class _FillToBottom(Flowable):
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+def local_pdf_path(doc: DocumentType, dlds_dir: Path) -> Path:
+    """Return the on-disk path for a document's locally-rendered PDF.
+
+    Falls back to ``doc.id`` when ``tofname()`` can't build a name (e.g. a
+    missing supplier name), so callers always get a usable path.
+
+    Args:
+        doc: Parsed ``Invoice`` or ``CreditNote`` instance.
+        dlds_dir: Directory the document's XML (and rendered PDF) lives in.
+
+    Returns:
+        Path: ``dlds_dir / "{fname}_local.pdf"``.
+    """
+    try:
+        fname = doc.tofname()
+    except ValueError:
+        fname = doc.id
+    return dlds_dir / f"{fname}_local.pdf"
+
+
 def render_invoice_pdf(
     doc: DocumentType,
     output_path: Path,
