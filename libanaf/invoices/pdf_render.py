@@ -22,6 +22,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from libanaf.invoices.common import format_money as _fmt_money
@@ -33,8 +35,14 @@ logger = logging.getLogger(__name__)
 DocumentType = Invoice | CreditNote
 
 # ── Fonts ──────────────────────────────────────────────────────────────────────
-FONT_N = "Helvetica"
-FONT_B = "Helvetica-Bold"
+# The base-14 Helvetica fonts only cover WinAnsi (cp1252), which is missing
+# Romanian ț/ș (U+021B/U+0219) — they render as tofu boxes. DejaVu Sans is a
+# full-Unicode TTF, bundled here so rendering doesn't depend on system fonts.
+_FONTS_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+FONT_N = "DejaVuSans"
+FONT_B = "DejaVuSans-Bold"
+pdfmetrics.registerFont(TTFont(FONT_N, str(_FONTS_DIR / "DejaVuSans.ttf")))
+pdfmetrics.registerFont(TTFont(FONT_B, str(_FONTS_DIR / "DejaVuSans-Bold.ttf")))
 
 # ── Page geometry ──────────────────────────────────────────────────────────────
 _MARGIN = 12 * mm
