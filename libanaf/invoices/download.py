@@ -76,13 +76,14 @@ async def download_invoice(
         await asyncio.sleep(0.1)
         url_base = settings.efactura.download_url
         url: str = f"{url_base}?id={invoice_id}"
-        logger.debug(f"Downloading from: {url}")
+        logger.info(f"Requesting invoice download from ANAF: GET {url}")
 
         response: Response | None = None
         try:
             async for attempt in anaf_retrying(settings.retry, logger):
                 with attempt:
                     response = await client.get(url)
+                    logger.info(f"ANAF response: {response.status_code} {response.reason_phrase} for {url}")
                     response.raise_for_status()
         except Exception as e:
             logger.error(f"Failed to download {url} after retries: {e}")
@@ -192,6 +193,7 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
         )
         data: dict[str, str | list[dict[str, str]]] = loop.run_until_complete(func(days, cif, filter))
         messages: str | list[dict[str, str]] = data.get("mesaje", [])
+        logger.info(f"ANAF returned {len(messages) if isinstance(messages, list) else 0} message(s) for download check")
 
         if not messages:
             console.print("[bold yellow]No messages found to download.[/bold yellow]")
@@ -206,8 +208,11 @@ def download(days: int | None = 60, cif: int | None = 19507820, filter: Filter |
             ]
 
         if not invoices_to_download:
+            n_total = len(messages) if isinstance(messages, list) else 0
             console.print("[bold green]All invoices are already downloaded.[/bold green]")
-            logger.info("All invoices are already downloaded.")
+            logger.info(
+                f"ANAF listed {n_total} message(s); all already present locally in {download_dir} — no download requests made"
+            )
             if settings.notification.email_to:
                 record_success(settings.state.state_file)
             return

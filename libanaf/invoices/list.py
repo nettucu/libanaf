@@ -63,10 +63,13 @@ async def fetch_invoice_list(
     )
     client: AsyncOAuth2Client = auth_client.get_client()
 
+    logger.info(f"Requesting invoice list from ANAF: GET {base_url} params={params}")
+
     try:
         async for attempt in anaf_retrying(settings.retry, logger):
             with attempt:
                 response: Response = await client.get(url=base_url, params=params)
+                logger.info(f"ANAF response: {response.status_code} {response.reason_phrase} for {base_url}")
                 response.raise_for_status()
                 response_data = response.json()
     except OAuth2Error as e:
@@ -91,5 +94,8 @@ async def fetch_invoice_list(
     if "eroare" in response_data:
         logger.error(f"Error: {response_data['eroare']}")
         raise AnafRequestError(f"ANAF API Error: {response_data['eroare']}")
+
+    n_messages = len(response_data.get("mesaje", []))
+    logger.info(f"ANAF returned {n_messages} message(s) in invoice list")
 
     return response_data
