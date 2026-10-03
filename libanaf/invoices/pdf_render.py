@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from xml.sax.saxutils import escape
 
+from reportlab import rl_config
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
@@ -33,6 +34,11 @@ from libanaf.ubl.invoice import Invoice
 logger = logging.getLogger(__name__)
 
 DocumentType = Invoice | CreditNote
+
+# ReportLab encodes page streams as [/ASCII85Decode /FlateDecode] by default.
+# CUPS pdftopdf (libcupsfilters 2.2.x) drops such content when it rescales the
+# page for the printable area, so `lp` prints a blank page. Flate-only is safe.
+rl_config.useA85 = 0
 
 # ── Fonts ──────────────────────────────────────────────────────────────────────
 # The base-14 Helvetica fonts only cover WinAnsi (cp1252), which is missing
