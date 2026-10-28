@@ -175,7 +175,33 @@ def spv_request(
     lunai: Annotated[int | None, typer.Option(help="Luna inițială (NeconcordanteD394)")] = None,
     lunas: Annotated[int | None, typer.Option(help="Luna finală (NeconcordanteD394)")] = None,
 ) -> None:
-    """File a document request; the answer arrives later as an inbox message. Each call is a new request."""
+    """File a document request; the answer arrives later as an inbox message. Each call is a new request.
+
+    \b
+    Tipuri (TIP exact, cu majuscule și spații; între ghilimele dacă are spații):
+     Doar --cui:
+       "Fisa Rol" (opțional --cui-pui), "Obligatii de plata",
+       "Nota obligatiilor de plata", "Situatie Sintetica",
+       "VECTOR FISCAL", "DATE IDENTIFICARE", "Istoric Spatiu Virtual",
+       "Registru intrari-iesiri", InterogariBanci, "Istoric bilant",
+       D112Contrib, NeconcordanteD112CNP
+     --cui --an:
+       "Istoric declaratii", "Bilant anual", "Bilant semestrial",
+       D101, D106, D120, D130, D205, D212, D392, D393
+     --cui --an --luna:
+       D100, D112, D180, D300, D301, D311, D390, D394,
+       D208 (--luna 6 = S1, --luna 12 = S2)
+     Speciale:
+       "Duplicat Recipisa"  --cui --numar-inregistrare
+       "Adeverinte Venit"   --cui --an --motiv (ex. Pensie, Altele)
+       NeconcordanteD394    --cui --an --lunai --lunas
+     Indisponibil prin API: CAF
+
+    \b
+    Exemple:
+     libanaf spv request "Fisa Rol" --cui 19507820
+     libanaf spv request D300 --cui 19507820 --an 2026 --luna 9
+    """
     try:
         request_id: str = _client(ctx.obj).request(
             tip,
