@@ -39,6 +39,15 @@ class EfacturaSettings(BaseModel):
     xml2pdf_url: str = "https://api.anaf.ro/prod/FCTEL/rest/transformare/FACT1/DA"
 
 
+class SpvSettings(BaseModel):
+    """ANAF SPV web service (SPVWS2) endpoint and local storage paths."""
+
+    base_url: str = "https://webserviced.anaf.ro/SPVWS2/rest/"
+    cookie_file: Path = Path("state/spv_cookies.json")
+    download_dir: Path = Path("dlds/spv/")
+    timeout: float = 90.0
+
+
 class StorageSettings(BaseModel):
     """Local filesystem paths and default query parameters."""
     download_dir: Path = Path("dlds/")
@@ -87,6 +96,7 @@ class Settings(BaseSettings):
     auth: AuthSettings
     connection: ConnectionSettings = ConnectionSettings()
     efactura: EfacturaSettings = EfacturaSettings()
+    spv: SpvSettings = SpvSettings()
     storage: StorageSettings = StorageSettings()
     retry: RetrySettings = RetrySettings()
     log: LogSettings = LogSettings()

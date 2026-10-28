@@ -24,3 +24,13 @@ class TokenExpiredError(AuthorizationError):
     """
 
     pass
+
+
+class SpvSessionError(AuthorizationError):
+    """Raised when the SPV session is missing or ANAF bounced the request to the certificate login.
+
+    A new session must be bootstrapped with the qualified certificate (e.g. in a browser
+    with vToken) and its cookies imported again via ``libanaf spv import-cookies``.
+    """
+
+    pass
