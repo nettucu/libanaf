@@ -1,6 +1,7 @@
 """Tests for the SPV (SPVWS2) cookie session, client and CLI — no live ANAF calls."""
 
 import json
+import re
 import stat
 import sys
 from pathlib import Path
@@ -28,7 +29,7 @@ LIST_OK = {
         },
         {"id": "222", "cif": "123", "tip": "RASPUNS SOLICITARE", "data_creare": "16.10.2026", "id_solicitare": 9},
     ],
-    "cui": "123",
+    "cui": "123, 456",
     "cnp": "0",
     "serial": "x",
     "titlu": "Lista mesaje",
@@ -201,6 +202,8 @@ def test_cli_list_request_and_expired_session(tmp_path: Path, monkeypatch: pytes
     )
     result = runner.invoke(app, ["spv", "list", "--days", "10"])
     assert result.exit_code == 0 and "RECIPISA" in result.output
+    summary = result.output.split("autorizate")[1]
+    assert re.search(r"123\s.*✅.*\s2\s", summary) and re.search(r"456\s.*✅.*\s0\s", summary)
 
     result = runner.invoke(app, ["spv", "request", "Fisa Rol", "--cui", "123"])
     assert result.exit_code == 0 and "id_solicitare=77" in result.output

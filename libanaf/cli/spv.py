@@ -98,10 +98,13 @@ def spv_list(
     cif: Annotated[str | None, typer.Option(help="Filtrează după CUI/CNP")] = None,
 ) -> None:
     """List SPV inbox messages."""
+    from collections import Counter
+
     try:
-        messages = _client(ctx.obj).list_messages(days, cif).mesaje
+        result = _client(ctx.obj).list_messages(days, cif)
     except (AnafRequestError, SpvSessionError) as e:
         _fail(e)
+    messages = result.mesaje
 
     table = Table(title=f"📬 Mesaje SPV ({len(messages)})")
     for column in ("Data", "CIF", "Tip", "ID", "Solicitare", "Detalii"):
@@ -109,6 +112,18 @@ def spv_list(
     for m in messages:
         table.add_row(f"{m.data_creare:%Y-%m-%d %H:%M}", m.cif, m.tip, m.id, m.id_solicitare or "", m.detalii)
     console.print(table)
+
+    # ANAF returns the authorized CUIs as one comma-separated string; it is absent when the inbox is empty.
+    authorized: list[str] = [c.strip() for c in (result.cui or "").split(",") if c.strip()]
+    counts: Counter[str] = Counter(m.cif for m in messages)
+    summary = Table(
+        title="🔑 CUI/CNP autorizate pe certificat" if authorized else "🔑 CUI/CNP (lista autorizată indisponibilă)"
+    )
+    for column in ("CUI/CNP", "Autorizat", "Mesaje"):
+        summary.add_column(column)
+    for c in authorized + sorted(set(counts) - set(authorized)):
+        summary.add_row(c, "✅" if c in authorized else "?", str(counts[c]))
+    console.print(summary)
 
 
 @app.command(name="download")
