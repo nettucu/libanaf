@@ -46,7 +46,39 @@ def import_cookies(
         typer.Argument(help="Fișier cookies.txt (Netscape) sau header Cookie; implicit se citește din stdin"),
     ] = None,
 ) -> None:
-    """Import the SPV session cookies from a browser where you logged in with the certificate."""
+    """Import the SPV session cookies from a browser where you logged in with the certificate.
+
+    \b
+    Pași (pe Windows/Mac, unde rulează aplicația vToken):
+     1. Pornește vToken și deschide în Chrome/Edge/Firefox/Safari:
+        https://webserviced.anaf.ro/SPVWS2/rest/listaMesaje?zile=60
+        Alege certificatul, introdu codul din Authenticator, așteaptă lista JSON.
+     2. Deschide DevTools (F12; Mac: Cmd+Opt+I; în Safari activează întâi
+        Settings > Advanced > Show features for web developers), tabul Network.
+     3. Reîncarcă pagina (F5 / Cmd+R), click pe cererea listaMesaje,
+        Headers > Request Headers > Cookie: copiază valoarea
+        (MRHSession=...; LastMRH_Session=...; F5_ST=...).
+     4. Nu apăsa logout și nu șterge cookie-urile: asta închide sesiunea.
+
+    \b
+    Transfer pe Linux (alege una):
+     Mac (Terminal):
+       pbpaste | ssh zeppelin 'cd ~/work/libanaf && \\
+         uv run libanaf spv import-cookies'
+     Windows (PowerShell):
+       Get-Clipboard | ssh zeppelin "cd ~/work/libanaf && \\
+         uv run libanaf spv import-cookies"
+     Manual: rulează `libanaf spv import-cookies` pe Linux,
+       lipește valoarea, apoi Enter și Ctrl+D.
+     Fișier: exportă cookies.txt (extensia "Get cookies.txt LOCALLY"),
+       copiază-l și rulează `libanaf spv import-cookies cookies.txt`;
+       apoi șterge fișierul de pe ambele mașini.
+
+    \b
+    Verificare: `libanaf spv list`.
+    Cookie-urile dau acces la SPV ca o parolă: nu le trimite pe chat/email.
+    Când sesiunea expiră, comenzile ies cu 🔐; repetă pașii.
+    """
     from libanaf.spv.session import parse_cookies
 
     settings: Settings = ctx.obj
