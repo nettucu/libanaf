@@ -207,3 +207,22 @@ def test_cli_list_request_and_expired_session(tmp_path: Path, monkeypatch: pytes
 
     result = runner.invoke(app, ["spv", "request", "Fisa Rol", "--cui", "123"])
     assert result.exit_code == 0 and "id_solicitare=77" in result.output
+
+
+def test_download_new_skips_stored_and_reports_failures(tmp_path: Path) -> None:
+    from libanaf.spv.archive import download_new, message_path
+
+    first = SpvClient(FakeSession(_json_handler(LIST_OK))).list_messages().mesaje[0]
+    stored = message_path(tmp_path, first)
+    stored.parent.mkdir(parents=True)
+    stored.write_bytes(b"%PDF-old")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("listaMesaje"):
+            return httpx.Response(200, json=LIST_OK)
+        return httpx.Response(200, json={"titlu": "x", "eroare": "id invalid"})
+
+    result = download_new(SpvClient(FakeSession(handler)), tmp_path)
+    assert result.total == 2 and result.downloaded == []
+    assert len(result.failed) == 1 and result.failed[0].startswith("222:")
+    assert stored.read_bytes() == b"%PDF-old"

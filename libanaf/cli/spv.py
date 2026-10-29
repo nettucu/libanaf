@@ -134,32 +134,19 @@ def spv_download(
     out_dir: Annotated[Path | None, typer.Option("--dir", help="Director destinație")] = None,
 ) -> None:
     """Download inbox PDFs not stored locally yet, as <dir>/<cif>/<YYYY-MM>/<date>_<tip>_<id>.pdf."""
+    from libanaf.spv.archive import download_new
+
     settings: Settings = ctx.obj
     target: Path = out_dir or settings.spv.download_dir
-    client = _client(settings)
     try:
-        messages = client.list_messages(days, cif).mesaje
+        result = download_new(_client(settings), target, days, cif)
     except (AnafRequestError, SpvSessionError) as e:
         _fail(e)
-
-    existing: set[str] = {p.stem.rsplit("_", 1)[-1] for p in target.rglob("*.pdf")} if target.exists() else set()
-    new = [m for m in messages if m.id not in existing]
-    console.print(f"📬 {len(messages)} messages, {len(new)} new")
-
-    for m in new:
-        path: Path = (
-            target / m.cif / f"{m.data_creare:%Y-%m}" / f"{m.data_creare:%Y-%m-%d}_{m.tip.replace(' ', '-')}_{m.id}.pdf"
-        )
-        try:
-            pdf: bytes = client.download(m.id)
-        except SpvSessionError as e:
-            _fail(e)
-        except AnafRequestError as e:
-            console.print(f"⚠️ {e}", style="yellow")
-            continue
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(pdf)
+    console.print(f"📬 {result.total} messages, {len(result.downloaded)} new")
+    for path in result.downloaded:
         console.print(f"✅ {path}")
+    for failure in result.failed:
+        console.print(f"⚠️ {failure}", style="yellow")
 
 
 @app.command(name="request")
